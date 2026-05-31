@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>aiAgentOS — 登录</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#0f1117;color:#e1e4e8;min-height:100vh;display:flex;justify-content:center;align-items:center}
+    .login-bg{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(88,166,255,0.08) 0%,transparent 70%),radial-gradient(ellipse at 80% 70%,rgba(188,140,255,0.06) 0%,transparent 60%);pointer-events:none}
+    .login-container{position:relative;z-index:1}
+    .login-card{background:#161b22;border:1px solid #21262d;border-radius:16px;padding:40px 44px;width:420px;max-width:95vw;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+    .login-header{text-align:center;margin-bottom:32px}
+    .login-header .icon{font-size:48px;display:block;margin-bottom:12px}
+    .login-header h1{font-size:22px;font-weight:700;color:#f0f6fc}
+    .login-header p{font-size:13px;color:#8b949e;margin-top:6px}
+    .form-group{margin-bottom:18px}
+    .form-group label{display:block;font-size:12px;font-weight:500;color:#8b949e;margin-bottom:6px}
+    .form-group input{width:100%;padding:10px 14px;background:#0d1117;border:1px solid #30363d;border-radius:8px;font-size:14px;color:#c9d1d9;outline:none;font-family:inherit}
+    .form-group input:focus{border-color:#58a6ff;box-shadow:0 0 0 3px rgba(88,166,255,.1)}
+    .form-group input::placeholder{color:#484f58}
+    .btn-login{width:100%;padding:11px;background:#238636;color:#fff;border:1px solid #2ea043;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;margin-top:8px}
+    .btn-login:hover{background:#2ea043}
+    .btn-login:disabled{opacity:.5;cursor:not-allowed}
+    .error-msg{background:#3d1214;color:#f85149;border:1px solid #da3633;border-radius:8px;padding:10px 14px;font-size:12px;margin-bottom:16px;display:none}
+    .error-msg.show{display:block}
+    .login-footer{text-align:center;margin-top:24px;font-size:11px;color:#484f58}
+    .login-footer span{color:#58a6ff}
+  </style>
+</head>
+<body>
+<div class="login-bg"></div>
+<div class="login-container">
+  <div class="login-card">
+    <div class="login-header">
+      <span class="icon">🤖</span>
+      <h1>aiAgentOS</h1>
+      <p id="login-subtitle">AI Agent 操作系统 · 管理控制台</p>
+    </div>
+    <div class="error-msg" id="login-error"></div>
+    <form id="login-form">
+      <div class="form-group" id="reg-name-group" style="display:none">
+        <label>昵称</label>
+        <input type="text" id="reg-realname" placeholder="输入你的昵称（选填）" />
+      </div>
+      <div class="form-group">
+        <label>用户名</label>
+        <input type="text" id="username" autocomplete="username" placeholder="请输入用户名" />
+      </div>
+      <div class="form-group">
+        <label>密码</label>
+        <input type="password" id="password" autocomplete="current-password" placeholder="请输入密码" />
+      </div>
+      <div class="form-group" id="reg-pw2-group" style="display:none">
+        <label>确认密码</label>
+        <input type="password" id="reg-password2" placeholder="再次输入密码" />
+      </div>
+      <input type="hidden" id="form-mode" value="login" />
+      <button type="submit" class="btn-login" id="btn-submit">🔐 登录</button>
+    </form>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:#8b949e">
+      <span id="toggle-text">没有账户？</span>
+      <a href="#" id="toggle-link" style="color:#58a6ff;text-decoration:none">立即注册</a>
+    </div>  </div>
+</div>
+<script>
+(function(){
+  var form = document.getElementById('login-form');
+  var errorEl = document.getElementById('login-error');
+  var btn = document.getElementById('btn-submit');
+  var mode = document.getElementById('form-mode');
+  var toggleLink = document.getElementById('toggle-link');
+  var toggleText = document.getElementById('toggle-text');
+
+  // 已登录跳转
+  if (localStorage.getItem('aiagentos_user')) {
+    window.location.href = '/';
+  }
+
+  // 切换登录/注册模式
+  toggleLink.addEventListener('click', function(e){
+    e.preventDefault();
+    if(mode.value === 'login'){
+      mode.value = 'register';
+      btn.textContent = '📝 注册';
+      toggleText.textContent = '已有账户？';
+      toggleLink.textContent = '去登录';
+      document.getElementById('reg-name-group').style.display = 'block';
+      document.getElementById('reg-pw2-group').style.display = 'block';
+      document.getElementById('login-subtitle').textContent = '创建新账户 · 加入智能聊天';
+    } else {
+      mode.value = 'login';
+      btn.textContent = '🔐 登录';
+      toggleText.textContent = '没有账户？';
+      toggleLink.textContent = '立即注册';
+      document.getElementById('reg-name-group').style.display = 'none';
+      document.getElementById('reg-pw2-group').style.display = 'none';
+      document.getElementById('login-subtitle').textContent = 'AI Agent 操作系统 · 管理控制台';
+    }
+    errorEl.classList.remove('show');
+  });
+
+  form.addEventListener('submit', async function(e){
+    e.preventDefault();
+    errorEl.classList.remove('show');
+    btn.disabled = true;
+    btn.textContent = mode.value==='register' ? '⏳ 注册中…' : '⏳ 验证中…';
+
+    var username = document.getElementById('username').value.trim();
+    var password = document.getElementById('password').value.trim();
+
+    if (!username || !password) {
+      showError('请输入用户名和密码');
+      return;
+    }
+
+    if(mode.value === 'register'){
+      var pw2 = document.getElementById('reg-password2').value.trim();
+      if(password !== pw2){ showError('两次密码不一致'); return; }
+      if(password.length < 4){ showError('密码至少4位'); return; }
+      var realName = document.getElementById('reg-realname').value.trim();
+
+      try {
+        var res = await fetch('/api/register', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({username:username, password:password, real_name:realName})
+        });
+        var json = await res.json();
+        if(json.code===0){
+          alert('注册成功！请登录');
+          toggleLink.click(); // 切换回登录模式
+        } else {
+          showError(json.message);
+        }
+      } catch(e){ showError('网络连接失败'); }
+    } else {
+      try {
+        var res = await fetch('/api/login', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({username:username, password:password})
+        });
+        var json = await res.json();
+        if(json.code===0){
+          localStorage.setItem('aiagentos_user', JSON.stringify(json.data));
+          // 非admin用户跳转到聊天界面
+          if(json.data.role !== 'admin'){
+            window.location.href = '/chat';
+          } else {
+            window.location.href = '/';
+          }
+        } else {
+          showError(json.message || '用户名或密码错误');
+        }
+      } catch(e){ showError('网络连接失败，请检查服务器'); }
+    }
+  });
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = mode.value==='register' ? '📝 注册' : '🔐 登录';
+  }
+})();
+</script>
+</body>
+</html>
