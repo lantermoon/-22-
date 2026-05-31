@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <title>aiAgentOS — AI Agent 操作系统</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:#0f1117;color:#e1e4e8;min-height:100vh}
+    .layout{display:flex;min-height:100vh}
+    /* 侧边栏 */
+    .sidebar{width:230px;background:#161b22;border-right:1px solid #21262d;padding:20px 0;flex-shrink:0}
+    .sidebar-logo{display:flex;align-items:center;gap:10px;padding:0 20px 20px;border-bottom:1px solid #21262d;margin-bottom:8px}
+    .sidebar-logo .icon{font-size:26px}
+    .sidebar-logo h1{font-size:16px;font-weight:700;color:#f0f6fc}
+    .sidebar-logo .version{font-size:10px;color:#58a6ff;margin-left:auto;background:#1f2937;padding:2px 8px;border-radius:10px}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:11px 20px;cursor:pointer;transition:all .15s;font-size:13px;color:#8b949e;border-left:3px solid transparent;margin:2px 0;user-select:none}
+    .nav-item:hover{background:rgba(88,166,255,.06);color:#c9d1d9}
+    .nav-item.active{background:rgba(88,166,255,.1);color:#f0f6fc!important;border-left-color:#58a6ff}
+    .nav-section{padding:8px 20px 4px;font-size:10px;text-transform:uppercase;color:#484f58;letter-spacing:1px;margin-top:8px}
+    .logout-btn{cursor:pointer;margin-top:20px;padding:11px 20px;font-size:12px;color:#f85149;border-top:1px solid #21262d;display:flex;align-items:center;gap:8px}
+    .logout-btn:hover{background:rgba(248,81,73,.08)}
+    /* 主区 */
+    .main{flex:1;padding:28px;overflow-y:auto;max-height:100vh}
+    /* Tab 页 */
+    .tab-page{display:none}
+    .tab-page.active{display:block!important}
+    /* 仓库子面板 */
+    .wh-sub{display:none}
+    .wh-sub.active{display:block!important}
+    /* 统计卡片 */
+    .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+    .stat-card{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:18px 20px}
+    .stat-card:hover{border-color:#30363d}
+    .stat-label{font-size:12px;color:#8b949e;margin-bottom:6px}
+    .stat-value{font-size:28px;font-weight:700}
+    .stat-value.blue{color:#58a6ff}.stat-value.green{color:#3fb950}.stat-value.orange{color:#d29922}.stat-value.purple{color:#bc8cff}
+    /* 面板 */
+    .panel{background:#161b22;border:1px solid #21262d;border-radius:10px;padding:20px 22px;margin-bottom:20px}
+    .panel-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+    .panel-title{font-size:15px;font-weight:600;color:#f0f6fc}
+    /* 按钮 */
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid transparent;transition:all .15s;user-select:none}
+    .btn-primary{background:#238636;color:#fff;border-color:#2ea043}.btn-primary:hover{background:#2ea043}
+    .btn-blue{background:#1f6feb;color:#fff;border-color:#388bfd}.btn-blue:hover{background:#388bfd}
+    .btn-danger{background:transparent;color:#f85149;border-color:#f85149}.btn-danger:hover{background:#da3633;color:#fff}
+    .btn-sm{padding:4px 10px;font-size:11px}
+    .btn-ghost{background:transparent;color:#8b949e;border-color:#30363d}.btn-ghost:hover{color:#c9d1d9;border-color:#58a6ff}
+    /* 表格 */
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{text-align:left;padding:10px 12px;border-bottom:2px solid #21262d;color:#8b949e;font-weight:500;white-space:nowrap}
+    td{padding:10px 12px;border-bottom:1px solid #21262d}
+    tr:hover td{background:#1c2128}
+    /* 徽章 */
+    .badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10px;font-weight:500}
+    .badge-admin{background:rgba(188,140,255,.15);color:#bc8cff}.badge-editor{background:rgba(88,166,255,.15);color:#58a6ff}.badge-viewer{background:rgba(63,185,80,.15);color:#3fb950}
+    .badge-active{background:rgba(63,185,80,.15);color:#3fb950}.badge-inactive{background:rgba(248,81,73,.15);color:#f85149}
+    .badge-idle{background:rgba(139,148,158,.15);color:#8b949e}.badge-running{background:rgba(210,153,34,.15);color:#d29922}.badge-done{background:rgba(63,185,80,.15);color:#3fb950}
+    .badge-pending{background:rgba(139,148,158,.15);color:#8b949e}
+    .badge-sqlite{background:rgba(88,166,255,.15);color:#58a6ff}.badge-mysql{background:rgba(210,153,34,.15);color:#d29922}.badge-file{background:rgba(139,148,158,.15);color:#8b949e}
+    /* 弹窗 */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;justify-content:center;align-items:center;z-index:1000}
+    .modal-overlay.hidden{display:none}
+    .modal{background:#161b22;border:1px solid #30363d;border-radius:12px;width:500px;max-width:95vw;padding:24px 28px}
+    .modal h3{font-size:16px;margin-bottom:18px;color:#f0f6fc}
+    .form-group{margin-bottom:14px}
+    .form-group label{display:block;font-size:12px;font-weight:500;color:#8b949e;margin-bottom:5px}
+    .form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 11px;background:#0d1117;border:1px solid #30363d;border-radius:6px;font-size:12px;color:#c9d1d9;outline:none;font-family:inherit}
+    .form-group textarea{resize:vertical;min-height:70px;font-family:"SF Mono",Menlo,monospace}
+    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#58a6ff}
+    .form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
+    /* Toast */
+    .toast{position:fixed;top:80px;right:20px;padding:12px 20px;border-radius:8px;font-size:13px;z-index:2000;border:1px solid}
+    .toast.success{background:#0d3320;color:#3fb950;border-color:#238636}.toast.error{background:#3d1214;color:#f85149;border-color:#da3633}
+    /* 结果框 */
+    .result-box{margin-top:14px;background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px;font-size:11px;font-family:"SF Mono",Menlo,monospace;white-space:pre-wrap;max-height:400px;overflow-y:auto;line-height:1.6;color:#7ee787}
+    .empty-state{text-align:center;padding:50px 20px;color:#484f58}
+    .empty-state .eicon{font-size:40px;margin-bottom:10px;display:block}
+    .user-badge{display:flex;align-items:center;gap:8px;padding:8px 20px;font-size:12px;color:#8b949e;border-top:1px solid #21262d;margin-top:auto}
+    @media(max-width:900px){.sidebar{width:55px}.sidebar-logo h1,.sidebar-logo .version,.nav-item span:last-child,.nav-section{display:none}.stats{grid-template-columns:repeat(2,1fr)}}
+  </style>
+</head>
+<body>
+<div class="layout">
+  <!-- ═══ 侧边栏 ═══ -->
+  <aside class="sidebar" style="display:flex;flex-direction:column;min-height:100vh">
+    <div class="sidebar-logo">
+      <span class="icon">🤖</span>
+      <h1>aiAgentOS</h1>
+      <span class="version">v1.0</span>
+    </div>
+    <nav style="flex:1">
+      <div class="nav-item active" data-tab="dashboard">📊 <span>系统看板</span></div>
+      <div class="nav-section">业务模块</div>
+      <div class="nav-item" data-tab="users">👥 <span>用户管理</span></div>
+      <div class="nav-item" data-tab="warehouse">📦 <span>数据仓库</span></div>
+      <div class="nav-item" data-tab="agents">🧠 <span>Agent 管理</span></div>
+      <div class="nav-item" data-tab="query">🔍 <span>SQL 查询</span></div>
+      <div class="nav-section">智能聊天管理</div>
+      <div class="nav-item" data-tab="chat-groups">👪 <span>群管理</span></div>
+      <div class="nav-item" data-tab="chat-files">📁 <span>文件管理</span></div>
+      <div class="nav-item" data-tab="chat-servers">🖥️ <span>服务器管理</span></div>
+      <div class="nav-item" data-tab="chat-tools">🛠️ <span>工具与员工管理</span></div>
+      <div class="nav-section">智慧舆情</div>
+      <div class="nav-item" data-tab="sentiment">📊 <span>舆情分析</span></div>
+      <div class="nav-item" data-tab="automation">⚡ <span>自动化任务</span></div>
+      <div class="nav-section">系统</div>
+      <div class="nav-item" data-tab="database">🗄️ <span>数据库管理</span></div>
+      <div class="nav-item" data-tab="settings">⚙️ <span>系统设置</span></div>
+    </nav>
+    <div class="user-badge">👤 <span id="current-user-display">管理员</span></div>
+    <a href="/chat" style="display:block;text-align:center;padding:10px;margin:8px 20px 0;background:#238636;color:#fff;border-radius:6px;font-size:12px;text-decoration:none;font-weight:500" target="_blank">💬 进入智能聊天</a>
+    <a href="/dashboard" style="display:block;text-align:center;padding:10px;margin:4px 20px 8px;background:#1f6feb;color:#fff;border-radius:6px;font-size:12px;text-decoration:none;font-weight:500" target="_blank">📊 进入数智大屏</a>
+    <div class="logout-btn" id="btn-logout">🚪 <span>退出登录</span></div>
+  </aside>
+
+  <!-- ═══ 主内容 ═══ -->
+  <main class="main" id="main-content">
+
+    <!-- 系统看板 -->
+    <div class="tab-page active" data-page="dashboard">
+      <div class="stats" id="dashboard-stats">
+        <div class="stat-card"><div class="stat-label">用户总数</div><div class="stat-value blue" id="s-users">-</div></div>
+        <div class="stat-card"><div class="stat-label">Agent 数量</div><div class="stat-value green" id="s-agents">-</div></div>
+        <div class="stat-card"><div class="stat-label">聊天群组</div><div class="stat-value orange" id="s-groups">-</div></div>
+        <div class="stat-card"><div class="stat-label">数字员工</div><div class="stat-value purple" id="s-de">-</div></div>
+        <div class="stat-card"><div class="stat-label">数据源</div><div class="stat-value blue" id="s-sources">-</div></div>
+        <div class="stat-card"><div class="stat-label">数据表</div><div class="stat-value green" id="s-tables">-</div></div>
+        <div class="stat-card"><div class="stat-label">ETL 任务</div><div class="stat-value orange" id="s-tasks">-</div></div>
+        <div class="stat-card"><div class="stat-label">收发文件</div><div class="stat-value purple" id="s-files">-</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">🤖 系统概览</span></div>
+        <p style="font-size:13px;color:#8b949e;line-height:1.8" id="dash-desc">正在加载…</p>
+      </div>
+    </div>
+
+    <!-- 用户管理 -->
+    <div class="tab-page" data-page="users">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">👥 用户列表</span>
+          <button class="btn btn-primary" id="btn-add-user">＋ 新增用户</button>
+        </div>
+        <table><thead><tr><th>ID</th><th>用户名</th><th>姓名</th><th>邮箱</th><th>角色</th><th>部门</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody id="users-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 数据仓库 -->
+    <div class="tab-page" data-page="warehouse">
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button class="btn btn-primary wh-tab-btn" data-wh="sources">📡 数据源</button>
+        <button class="btn btn-ghost wh-tab-btn" data-wh="dwtables">📋 数据表</button>
+        <button class="btn btn-ghost wh-tab-btn" data-wh="tasks">⚡ ETL 任务</button>
+      </div>
+      <!-- 数据源 -->
+      <div class="wh-sub active" data-wh-sub="sources">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">📡 数据源列表</span>
+            <button class="btn btn-blue" id="btn-add-source">＋ 添加数据源</button>
+          </div>
+          <table><thead><tr><th>ID</th><th>名称</th><th>类型</th><th>连接信息</th><th>描述</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody id="sources-tbody"></tbody></table>
+        </div>
+      </div>
+      <!-- 数据表 -->
+      <div class="wh-sub" data-wh-sub="dwtables">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">📋 数据仓库表</span>
+            <button class="btn btn-blue" id="btn-add-dwtable">＋ 注册数据表</button>
+          </div>
+          <table><thead><tr><th>ID</th><th>表名</th><th>描述</th><th>所属数据源</th><th>行数</th><th>状态</th></tr></thead>
+            <tbody id="dwtables-tbody"></tbody></table>
+        </div>
+      </div>
+      <!-- ETL任务 -->
+      <div class="wh-sub" data-wh-sub="tasks">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">⚡ ETL 任务列表</span>
+            <button class="btn btn-blue" id="btn-add-task">＋ 创建任务</button>
+          </div>
+          <table><thead><tr><th>ID</th><th>任务名</th><th>类型</th><th>数据源</th><th>目标表</th><th>调度</th><th>状态</th><th>上次执行</th><th>操作</th></tr></thead>
+            <tbody id="tasks-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Agent 管理 -->
+    <div class="tab-page" data-page="agents">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">🧠 Agent 列表</span>
+          <button class="btn btn-blue" id="btn-add-agent">＋ 新建 Agent</button>
+        </div>
+        <table><thead><tr><th>ID</th><th>名称</th><th>描述</th><th>类型</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody id="agents-tbody"></tbody></table>
+      </div>
+      <div class="panel" id="agent-history-panel">
+        <div class="panel-header"><span class="panel-title">📜 执行历史</span></div>
+        <table><thead><tr><th>时间</th><th>Agent</th><th>状态</th><th>耗时</th><th>结果</th></tr></thead>
+          <tbody id="agent-history-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- SQL 查询 -->
+    <div class="tab-page" data-page="query">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">🔍 交互式 SQL 查询</span></div>
+        <p style="font-size:12px;color:#8b949e;margin-bottom:10px">
+          可查询表：<code style="background:#0d1117;padding:2px 6px;border-radius:4px">users</code>
+          <code style="background:#0d1117;padding:2px 6px;border-radius:4px">agents</code>
+          <code style="background:#0d1117;padding:2px 6px;border-radius:4px">data_sources</code>
+          <code style="background:#0d1117;padding:2px 6px;border-radius:4px">dw_tables</code>
+          <code style="background:#0d1117;padding:2px 6px;border-radius:4px">data_tasks</code>
+          <code style="background:#0d1117;padding:2px 6px;border-radius:4px">agent_history</code>
+          <code style="background:#0d1117;padding:2px 6px;border-radius:4px">system_config</code>
+        </p>
+        <div class="form-group"><textarea id="sql-input" rows="3" placeholder="SELECT * FROM users;"></textarea></div>
+        <button class="btn btn-primary" id="btn-exec-query">▶ 执行</button>
+        <button class="btn btn-ghost" style="margin-left:6px" id="btn-example-query">示例查询</button>
+        <div class="result-box" id="query-result">👆 输入 SQL 后点击执行</div>
+      </div>
+    </div>
+
+    <!-- 数据库管理 -->
+    <div class="tab-page" data-page="database">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">🗄️ 数据库后端管理</span>
+          <span id="db-backend-badge" style="font-size:12px;color:#58a6ff">加载中…</span>
+        </div>
+        <p style="font-size:13px;color:#8b949e;line-height:1.8;margin-bottom:16px">
+          系统支持 <strong style="color:#58a6ff">SQLite</strong>（默认）和 <strong style="color:#d29922">MySQL</strong> 两种数据库后端。
+          切换后系统会自动在新后端创建表结构并初始化种子数据。
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <!-- SQLite 卡片 -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:20px" id="card-sqlite">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <span style="font-size:32px">📦</span>
+              <div>
+                <h4 style="color:#f0f6fc;margin-bottom:2px">SQLite</h4>
+                <span style="font-size:11px;color:#8b949e">文件型数据库，默认存储于 data.db</span>
+              </div>
+            </div>
+            <ul style="font-size:12px;color:#8b949e;padding-left:18px;line-height:2;margin-bottom:12px">
+              <li>零配置，开箱即用</li>
+              <li>轻量级，适合开发和小规模部署</li>
+              <li>数据文件可轻松备份迁移</li>
+            </ul>
+            <button class="btn btn-blue" id="btn-switch-sqlite" onclick="switchToSQLite()" style="width:100%">🔁 切换到 SQLite</button>
+          </div>
+          <!-- MySQL 卡片 -->
+          <div style="background:#0d1117;border:1px solid #21262d;border-radius:10px;padding:20px" id="card-mysql">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+              <span style="font-size:32px">🐬</span>
+              <div>
+                <h4 style="color:#f0f6fc;margin-bottom:2px">MySQL</h4>
+                <span style="font-size:11px;color:#8b949e">关系型数据库，适合生产环境</span>
+              </div>
+            </div>
+            <div id="mysql-config-form">
+              <div class="form-group" style="margin-bottom:8px">
+                <label>主机地址</label>
+                <input id="mysql-host" value="localhost" placeholder="localhost" />
+              </div>
+              <div class="form-group" style="margin-bottom:8px">
+                <label>端口</label>
+                <input id="mysql-port" type="number" value="3306" placeholder="3306" />
+              </div>
+              <div class="form-group" style="margin-bottom:8px">
+                <label>用户名</label>
+                <input id="mysql-user" value="root" placeholder="root" />
+              </div>
+              <div class="form-group" style="margin-bottom:8px">
+                <label>密码</label>
+                <input id="mysql-password" type="password" placeholder="请输入密码" />
+              </div>
+              <div class="form-group" style="margin-bottom:12px">
+                <label>数据库名</label>
+                <input id="mysql-database" value="aiagentos" placeholder="aiagentos" />
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-ghost" onclick="testMySQL()" style="flex:1">🔍 测试连接</button>
+                <button class="btn btn-primary" onclick="switchToMySQL()" style="flex:1">🔁 切换到 MySQL</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 当前状态 -->
+        <div id="db-status-info" style="margin-top:16px;background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:14px;font-size:13px;color:#8b949e;line-height:1.8">
+          正在加载数据库状态…
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统设置 -->
+    <div class="tab-page" data-page="settings">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">⚙️ 系统配置</span></div>
+        <div id="settings-list" style="font-size:13px"></div>
+      </div>
+    </div>
+
+    <!-- 智能聊天 — 群管理 -->
+    <div class="tab-page" data-page="chat-groups">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">👪 群聊管理</span></div>
+        <table><thead><tr><th>ID</th><th>群名称</th><th>群主</th><th>成员数</th><th>状态</th><th>创建时间</th><th>操作</th></tr></thead>
+          <tbody id="chat-groups-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 智能聊天 — 文件管理 -->
+    <div class="tab-page" data-page="chat-files">
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">📁 文件管理</span></div>
+        <table><thead><tr><th>ID</th><th>文件名</th><th>大小</th><th>类型</th><th>引用次数</th><th>上传者</th><th>上传时间</th><th>操作</th></tr></thead>
+          <tbody id="chat-files-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 智能聊天 — 服务器管理 -->
+    <div class="tab-page" data-page="chat-servers">
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">🖥️ 聊天服务器管理</span>
+          <button class="btn btn-primary" onclick="showAddChatServer()">＋ 添加服务器</button>
+        </div>
+        <table><thead><tr><th>ID</th><th>名称</th><th>地址</th><th>端口</th><th>状态</th><th>默认</th><th>负载</th><th>操作</th></tr></thead>
+          <tbody id="chat-servers-tbody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- 智能聊天 — 工具与数字员工管理 -->
+    <div class="tab-page" data-page="chat-tools">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">🤖 数字员工</span>
+            <button class="btn btn-primary" onclick="showAddDE()">＋ 新增员工</button>
+          </div>
+          <table><thead><tr><th>名称</th><th>类型</th><th>绑定工具</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody id="chat-de-tbody"></tbody></table>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">🛠️ 工具集</span>
+            <button class="btn btn-primary" onclick="showAddTool()">＋ 新增工具</button>
+          </div>
+          <table><thead><tr><th>名称</th><th>类型</th><th>绑定员工</th><th>状态</th><th>操作</th></tr></thead>
+            <tbody id="chat-tools-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 智慧舆情 — 舆情分析 -->
+    <div class="tab-page" data-page="sentiment">
+      <div class="stats" id="sentiment-stats">
+        <div class="stat-card"><div class="stat-label">分析消息数</div><div class="stat-value blue" id="ss-total">-</div></div>
+        <div class="stat-card"><div class="stat-label">正面率</div><div class="stat-value green" id="ss-pos">-</div></div>
+        <div class="stat-card"><div class="stat-label">负面率</div><div class="stat-value orange" id="ss-neg">-</div></div>
+        <div class="stat-card"><div class="stat-label">风险告警</div><div class="stat-value purple" id="ss-risk">-</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">📋 舆情报告列表</span>
+            <button class="btn btn-primary" onclick="runSentimentAnalysis()">🔍 立即分析</button>
+          </div>
+          <table><thead><tr><th>ID</th><th>类型</th><th>周期</th><th>消息数</th><th>正面/负面</th><th>评分</th><th>时间</th></tr></thead>
+            <tbody id="sentiment-reports-tbody"></tbody></table>
+        </div>
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">⚠️ 风险告警列表</span>
+            <button class="btn btn-blue" onclick="runRiskScan()">🔍 风险扫描</button>
+          </div>
+          <div style="max-height:400px;overflow-y:auto">
+            <table><thead><tr><th>等级</th><th>关键词</th><th>来源</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
+              <tbody id="risk-alerts-tbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:16px">
+        <div class="panel-header">
+          <span class="panel-title">🧪 单条文本分析</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <textarea id="sentiment-input" style="flex:1;padding:10px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#c9d1d9;font-size:13px;resize:vertical;min-height:60px" placeholder="输入要分析的文本..."></textarea>
+          <button class="btn btn-primary" onclick="analyzeSingleText()" style="margin-top:0">分析</button>
+        </div>
+        <div id="sentiment-result" style="margin-top:10px;color:#8b949e;font-size:12px"></div>
+      </div>
+    </div>
+
+    <!-- 自动化任务 -->
+    <div class="tab-page" data-page="automation">
+      <div class="stats" id="auto-stats">
+        <div class="stat-card"><div class="stat-label">总任务数</div><div class="stat-value blue" id="as-total">-</div></div>
+        <div class="stat-card"><div class="stat-label">活跃任务</div><div class="stat-value green" id="as-active">-</div></div>
+        <div class="stat-card"><div class="stat-label">暂停任务</div><div class="stat-value orange" id="as-paused">-</div></div>
+        <div class="stat-card"><div class="stat-label">今日执行</div><div class="stat-value purple" id="as-executed">-</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="panel">
+          <div class="panel-header">
+            <span class="panel-title">⚡ 自动任务列表</span>
+            <div>
+              <button class="btn btn-primary" onclick="showAddAutoTask()">＋ 新建任务</button>
+              <button class="btn btn-blue" onclick="executeAllAutoTasks()">▶ 全部执行</button>
+            </div>
+          </div>
+          <table><thead><tr><th>ID</th><th>任务名</th><th>类型</th><th>调度</th><th>状态</th><th>执行次数</th><th>上次执行</th><th>操作</th></tr></thead>
+            <tbody id="auto-tasks-tbody"></tbody></table>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">📜 执行日志</span></div>
+          <div style="max-height:400px;overflow-y:auto">
+            <table><thead><tr><th>任务</th><th>状态</th><th>耗时</th><th>结果</th><th>时间</th></tr></thead>
+              <tbody id="auto-logs-tbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══ 通用弹窗 ═══ -->
+<div class="modal-overlay hidden" id="modal">
+  <div class="modal">
+    <h3 id="modal-title"></h3>
+    <div id="modal-body"></div>
+    <div class="form-actions" id="modal-footer">
+      <button class="btn btn-ghost" id="btn-modal-cancel">取消</button>
+      <button class="btn btn-primary" id="btn-modal-submit">确认</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" style="opacity:0;pointer-events:none"></div>
+
+<script>
+(function(){
+  'use strict';
+  // ======== 工具 ========
+  const $ = (s, el) => (el||document).querySelector(s);
+  const $$ = (s, el) => (el||document).querySelectorAll(s);
+
+  function toast(msg, type) {
+    type = type || 'success';
+    var e = $('#toast');
+    e.className = 'toast ' + type;
+    e.textContent = msg;
+    e.style.opacity = '1';
+    e.style.pointerEvents = 'auto';
+    clearTimeout(e._tid);
+    e._tid = setTimeout(function(){ e.style.opacity = '0'; e.style.pointerEvents = 'none'; }, 2500);
+  }
+
+  function esc(s) {
+    if (!s) return '';
+    var d = document.createElement('div');
+    d.textContent = String(s);
+    return d.innerHTML;
+  }
+
+  // ======== 会话管理 ========
+  function checkAuth() {
+    var info = localStorage.getItem('aiagentos_user');
+    if (!info) { window.location.href = '/login'; return; }
+    try {
+      var u = JSON.parse(info);
+      $('#current-user-display').textContent = u.real_name || u.username || '管理员';
+    } catch(e) { window.location.href = '/login'; }
+  }
+
+  $('#btn-logout').addEventListener('click', function(){
+    localStorage.removeItem('aiagentos_user');
+    window.location.href = '/login';
+  });
+
+  // ======== Tab 切换 ========
+  var currentTab = 'dashboard';
+
+  function switchTab(name) {
+    if (currentTab === name) return;
+    currentTab = name;
+
+    // 导航高亮
+    $$('.nav-item').forEach(function(el){ el.classList.remove('active'); });
+    var navEl = document.querySelector('.nav-item[data-tab="' + name + '"]');
+    if (navEl) navEl.classList.add('active');
+
+    // 页面切换
+    $$('.tab-page').forEach(function(el){ el.classList.remove('active'); });
+    var pageEl = document.querySelector('.tab-page[data-page="' + name + '"]');
+    if (!pageEl) { console.error('Tab page not found: ' + name); return; }
+    pageEl.classList.add('active');
+
+    // 加载数据
+    var loaders = {
+      dashboard: loadDashboard,
+      users: loadUsers,
+      warehouse: function(){ switchWhTab('sources'); },
+      agents: loadAgents,
+      query: function(){},
+      settings: loadSettings,
+      'chat-groups': loadChatGroups,
+      'chat-files': loadChatFiles,
+      'chat-servers': loadChatServers,
+      'chat-tools': loadChatTools,
+      'sentiment': loadSentiment,
+      'automation': loadAutomation,
+      'database': loadDbManagement
+    };
+    if (loaders[name]) loaders[name]();
+  }
+
+  // 导航点击委托
+  document.querySelector('.sidebar nav').addEventListener('click', function(e){
+    var item = e.target.closest('.nav-item');
+    if (!item) return;
+    var tab = item.getAttribute('data-tab');
+    if (tab) switchTab(tab);
+  });
+
+  // ======== 数据仓库子Tab ========
+  function switchWhTab(sub) {
+    // 子导航高亮
+    $$('.wh-tab-btn').forEach(function(btn){
+      var isActive = btn.getAttribute('data-wh') === sub;
+      btn.className = isActive ? 'btn btn-primary wh-tab-btn' : 'btn btn-ghost wh-tab-btn';
+    });
+    // 子面板切换
+    $$('.wh-sub').forEach(function(el){ el.classList.remove('active'); });
+    var subEl = document.querySelector('.wh-sub[data-wh-sub="' + sub + '"]');
+    if (subEl) subEl.classList.add('active');
+
+    var loaders = { sources: loadSources, dwtables: loadDWTables, tasks: loadTasks };
+    if (loaders[sub]) loaders[sub]();
+  }
+
+  // 仓库子导航点击委托
+  document.querySelector('[data-page="warehouse"]').addEventListener('click', function(e){
+    var btn = e.target.closest('.wh-tab-btn');
+    if (!btn) return;
+    switchWhTab(btn.getAttribute('data-wh'));
+  });
+
+  // ======== 数据加载 ========
+  async function loadDashboard() {
+    try {
+      var r = await (await fetch('/api/stats')).json();
+      if (r.code !== 0) return;
+      var d = r.data;
+      $('#s-users').textContent = d.user_count;
+      $('#s-agents').textContent = d.agent_count;
+      $('#s-groups').textContent = d.group_count || 0;
+      $('#s-de').textContent = d.de_count || 0;
+      $('#s-sources').textContent = d.source_count;
+      $('#s-tables').textContent = d.dw_table_count;
+      $('#s-tasks').textContent = d.task_count;
+      $('#s-files').textContent = d.file_count || 0;
+      $('#dash-desc').innerHTML = '<strong>' + esc(d.system_name) + ' ' + esc(d.system_version) +
+        '</strong> — AI Agent 操作系统<br>已集成用户管理、智能聊天（' + (d.group_count||0) + ' 群组，' + (d.de_count||0) + ' 数字员工）、数据仓库（' + d.source_count +
+        ' 数据源）、Agent 调度引擎（' + d.agent_types + ' 种类型）、SQL 查询等核心模块。';
+    } catch(e) { console.error(e); }
+  }
+
+  async function loadUsers() {
+    try {
+      var r = await (await fetch('/api/users')).json();
+      if (r.code !== 0) return;
+      var roleMap = {admin:'管理员',editor:'编辑者',viewer:'查看者'};
+      var roleCls = {admin:'badge-admin',editor:'badge-editor',viewer:'badge-viewer'};
+      var rows = r.data;
+      if (!rows.length) {
+        $('#users-tbody').innerHTML = '<tr><td colspan="9"><div class="empty-state"><span class="eicon">📭</span>暂无用户</div></td></tr>';
+        return;
+      }
+      $('#users-tbody').innerHTML = rows.map(function(u){
+        return '<tr>' +
+          '<td>' + u.id + '</td><td><strong>' + esc(u.username) + '</strong></td>' +
+          '<td>' + esc(u.real_name) + '</td><td>' + esc(u.email) + '</td>' +
+          '<td><span class="badge ' + (roleCls[u.role]||'badge-viewer') + '">' + (roleMap[u.role]||u.role) + '</span></td>' +
+          '<td>' + esc(u.department) + '</td>' +
+          '<td><span class="badge ' + (u.status===1?'badge-active':'badge-inactive') + '">' + (u.status===1?'启用':'禁用') + '</span></td>' +
+          '<td>' + (u.created_at||'-') + '</td>' +
+          '<td><button class="btn btn-sm btn-ghost edit-user-btn" data-id="' + u.id + '" data-json="' + esc(JSON.stringify(u)) + '">编辑</button> ' +
+          '<button class="btn btn-sm btn-danger del-user-btn" data-id="' + u.id + '" data-name="' + esc(u.username) + '">删除</button></td>' +
+        '</tr>';
+      }).join('');
+      bindUserActions();
+    } catch(e) { console.error(e); }
+  }
+
+  function bindUserActions() {
+    $$('.edit-user-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var data = JSON.parse(this.getAttribute('data-json'));
+        openModal('user', 'edit', data);
+      });
+    });
+    $$('.del-user-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var id = this.getAttribute('data-id');
+        var name = this.getAttribute('data-name');
+        deleteItem('user', id, name);
+      });
+    });
+  }
+
+  async function loadSources() {
+    try {
+      var r = await (await fetch('/api/datasources')).json();
+      if (r.code !== 0) return;
+      var rows = r.data;
+      if (!rows.length) {
+        $('#sources-tbody').innerHTML = '<tr><td colspan="7"><div class="empty-state"><span class="eicon">📭</span>暂无数据源</div></td></tr>';
+        return;
+      }
+      $('#sources-tbody').innerHTML = rows.map(function(s){
+        return '<tr>' +
+          '<td>' + s.id + '</td><td><strong>' + esc(s.name) + '</strong></td>' +
+          '<td><span class="badge badge-' + esc(s.source_type) + '">' + esc(s.source_type) + '</span></td>' +
+          '<td><code style="font-size:10px;background:#0d1117;padding:2px 6px;border-radius:3px">' + esc(s.connection||'') + '</code></td>' +
+          '<td>' + esc(s.description) + '</td>' +
+          '<td><span class="badge ' + (s.status===1?'badge-active':'badge-inactive') + '">' + (s.status===1?'启用':'禁用') + '</span></td>' +
+          '<td><button class="btn btn-sm btn-ghost edit-src-btn" data-json="' + esc(JSON.stringify(s)) + '">编辑</button> ' +
+          '<button class="btn btn-sm btn-danger del-src-btn" data-id="' + s.id + '" data-name="' + esc(s.name) + '">删除</button></td>' +
+        '</tr>';
+      }).join('');
+      $$('.edit-src-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){ openModal('source','edit',JSON.parse(this.getAttribute('data-json'))); });
+      });
+      $$('.del-src-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){ deleteItem('source',this.getAttribute('data-id'),this.getAttribute('data-name')); });
+      });
+    } catch(e) { console.error(e); }
+  }
+
+  async function loadDWTables() {
+    try {
+      var r = await (await fetch('/api/dwtables')).json();
+      if (r.code !== 0) return;
+      var rows = r.data;
+      if (!rows.length) {
+        $('#dwtables-tbody').innerHTML = '<tr><td colspan="6"><div class="empty-state"><span class="eicon">📭</span>暂无数据表</div></td></tr>';
+        return;
+      }
+      $('#dwtables-tbody').innerHTML = rows.map(function(t){
+        return '<tr><td>' + t.id + '</td><td><code style="background:#0d1117;padding:2px 6px;border-radius:3px">' + esc(t.table_name) + '</code></td>' +
+          '<td>' + esc(t.description) + '</td><td>' + esc(t.source_name||'-') + '</td><td>' + t.row_count + '</td>' +
+          '<td><span class="badge ' + (t.status===1?'badge-active':'badge-inactive') + '">' + (t.status===1?'正常':'禁用') + '</span></td></tr>';
+      }).join('');
+    } catch(e) { console.error(e); }
+  }
+
+  async function loadTasks() {
+    try {
+      var r = await (await fetch('/api/datatasks')).json();
+      if (r.code !== 0) return;
+      var rows = r.data;
+      if (!rows.length) {
+        $('#tasks-tbody').innerHTML = '<tr><td colspan="9"><div class="empty-state"><span class="eicon">📭</span>暂无任务</div></td></tr>';
+        return;
+      }
+      var sMap = {pending:'badge-pending',running:'badge-running',done:'badge-done'};
+      $('#tasks-tbody').innerHTML = rows.map(function(t){
+        return '<tr><td>' + t.id + '</td><td><strong>' + esc(t.task_name) + '</strong></td><td>' + esc(t.task_type) + '</td>' +
+          '<td>' + esc(t.source_name||'-') + '</td><td>' + esc(t.target_table||'-') + '</td>' +
+          '<td><code style="font-size:10px">' + esc(t.schedule||'-') + '</code></td>' +
+          '<td><span class="badge ' + (sMap[t.status]||'badge-pending') + '">' + esc(t.status) + '</span></td>' +
+          '<td>' + (t.last_run||'-') + '</td>' +
+          '<td><button class="btn btn-sm btn-blue exec-task-btn" data-id="' + t.id + '">▶ 执行</button></td></tr>';
+      }).join('');
+      $$('.exec-task-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){ execTask(this.getAttribute('data-id')); });
+      });
+    } catch(e) { console.error(e); }
+  }
+
+  async function loadAgents() {
+    try {
+      var r = await (await fetch('/api/agents')).json();
+      if (r.code !== 0) return;
+      var rows = r.data;
+      if (!rows.length) {
+        $('#agents-tbody').innerHTML = '<tr><td colspan="7"><div class="empty-state"><span class="eicon">🤖</span>暂无 Agent</div></td></tr>';
+        return;
+      }
+      var sMap = {idle:'badge-idle',running:'badge-running',done:'badge-done',error:'badge-inactive'};
+      $('#agents-tbody').innerHTML = rows.map(function(a){
+        return '<tr><td><code style="font-size:10px">' + esc(a.id) + '</code></td><td><strong>' + esc(a.name) + '</strong></td>' +
+          '<td>' + esc(a.description) + '</td><td><span class="badge badge-editor">' + esc(a.agent_type) + '</span></td>' +
+          '<td><span class="badge ' + (sMap[a.status]||'badge-idle') + '">' + esc(a.status) + '</span></td>' +
+          '<td>' + (a.created_at||'-') + '</td>' +
+          '<td><button class="btn btn-sm btn-blue exec-agent-btn" data-id="' + esc(a.id) + '">▶ 执行</button></td></tr>';
+      }).join('');
+      $$('.exec-agent-btn').forEach(function(btn){
+        btn.addEventListener('click', function(){ execAgent(this.getAttribute('data-id')); });
+      });
+      loadAgentHistory();
+    } catch(e) { console.error(e); }
+  }
+
+  async function loadSettings() {
+    try {
+      var r = await (await fetch('/api/config')).json();
+      if (r.code !== 0) return;
+      var config = r.data;
+      var keys = Object.keys(config);
+      if (!keys.length) { $('#settings-list').innerHTML = '<div class="empty-state">暂无配置</div>'; return; }
+      $('#settings-list').innerHTML = keys.map(function(k){
+        return '<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #21262d">' +
+          '<div><strong style="color:#f0f6fc">' + esc(k) + '</strong><div style="color:#8b949e;font-size:11px;margin-top:2px">配置项</div></div>' +
+          '<code style="color:#7ee787;background:#0d1117;padding:4px 10px;border-radius:4px;max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(String(config[k])) + '</code></div>';
+      }).join('');
+    } catch(e) { console.error(e); }
+  }
+
+  async function loadAgentHistory() {
+    try {
+      var r = await (await fetch('/api/agents/history')).json();
+      if (!r.data || !r.data.length) return;
+      var panel = $('#agent-history-panel');
+      if (panel) panel.style.display = 'block';
+      var sMap = {done:'badge-done',error:'badge-inactive',running:'badge-running'};
+      $('#agent-history-tbody').innerHTML = r.data.slice(0,15).map(function(h){
+        return '<tr><td>' + (h.created_at||'-') + '</td><td>' + esc(h.agent_name) + '</td>' +
+          '<td><span class="badge ' + (sMap[h.status]||'badge-idle') + '">' + esc(h.status) + '</span></td>' +
+          '<td>' + (h.elapsed||0) + 's</td>' +
+          '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(h.result||h.error||'-') + '</td></tr>';
+      }).join('');
+    } catch(e) { console.error(e); }
+  }
+
+  // ======== 弹窗系统 ========
+  var _modalType = '', _modalAction = '', _editId = null;
+
+  var modalConfig = {
+    user: { title:'用户', fields:[
+      {id:'f1',label:'用户名 *',type:'text',key:'username'},
+      {id:'f2',label:'密码',type:'text',key:'password',placeholder:'默认 123456'},
+      {id:'f3',label:'真实姓名',type:'text',key:'real_name'},
+      {id:'f4',label:'邮箱',type:'email',key:'email'},
+      {id:'f5',label:'角色',type:'select',key:'role',opts:[['admin','管理员'],['editor','编辑者'],['viewer','查看者']]},
+      {id:'f6',label:'部门',type:'text',key:'department'}
+    ]},
+    source: { title:'数据源', fields:[
+      {id:'f1',label:'名称 *',type:'text',key:'name'},
+      {id:'f2',label:'类型',type:'select',key:'source_type',opts:[['sqlite','SQLite'],['mysql','MySQL'],['file','File']]},
+      {id:'f3',label:'连接信息(JSON)',type:'textarea',key:'connection'},
+      {id:'f4',label:'描述',type:'text',key:'description'}
+    ]},
+    dwtable: { title:'数据表', fields:[
+      {id:'f1',label:'表名 *',type:'text',key:'table_name'},
+      {id:'f2',label:'描述',type:'text',key:'description'},
+      {id:'f3',label:'数据源 ID',type:'number',key:'source_id'}
+    ]},
+    task: { title:'ETL 任务', fields:[
+      {id:'f1',label:'任务名 *',type:'text',key:'task_name'},
+      {id:'f2',label:'类型',type:'select',key:'task_type',opts:[['etl','ETL'],['check','健康检查'],['sync','同步']]},
+      {id:'f3',label:'数据源 ID',type:'number',key:'source_id'},
+      {id:'f4',label:'目标表',type:'text',key:'target_table'},
+      {id:'f5',label:'调度(cron)',type:'text',key:'schedule',placeholder:'如: 0 2 * * *'}
+    ]},
+    agent: { title:'Agent', fields:[
+      {id:'f1',label:'名称 *',type:'text',key:'name'},
+      {id:'f2',label:'描述',type:'text',key:'description'},
+      {id:'f3',label:'类型',type:'select',key:'agent_type',opts:[['generic','通用'],['data','数据'],['chat','对话'],['task','任务']]}
+    ]}
+  };
+
+  function openModal(type, action, data) {
+    _modalType = type; _modalAction = action; _editId = data ? data.id : null;
+    var cfg = modalConfig[type];
+    if (!cfg) return;
+    $('#modal-title').textContent = (action === 'add' ? '新增' : '编辑') + cfg.title;
+    $('#modal-body').innerHTML = cfg.fields.map(function(f){
+      var val = ''; if (data && data[f.key] !== undefined) val = data[f.key];
+      var inp = '';
+      if (f.type === 'select') {
+        inp = '<select id="' + f.id + '">' + (f.opts||[]).map(function(o){
+          return '<option value="' + o[0] + '" ' + (String(val)===String(o[0])?'selected':'') + '>' + o[1] + '</option>';
+        }).join('') + '</select>';
+      } else if (f.type === 'textarea') {
+        inp = '<textarea id="' + f.id + '" placeholder="' + (f.placeholder||'') + '">' + esc(val) + '</textarea>';
+      } else {
+        inp = '<input id="' + f.id + '" type="' + f.type + '" value="' + esc(val) + '" placeholder="' + (f.placeholder||'') + '" />';
+      }
+      return '<div class="form-group"><label>' + f.label + '</label>' + inp + '</div>';
+    }).join('');
+    $('#btn-modal-submit').textContent = action === 'add' ? '确认添加' : '保存修改';
+    $('#modal').classList.remove('hidden');
+  }
+
+  function closeModal() { $('#modal').classList.add('hidden'); }
+
+  async function submitModal() {
+    var getVal = function(id){ var el = $('#'+id); return el ? el.value.trim() : ''; };
+    var payloadMap = {
+      user: function(){ return {username:getVal('f1'),password:getVal('f2'),real_name:getVal('f3'),email:getVal('f4'),role:getVal('f5'),department:getVal('f6')}; },
+      source: function(){ return {name:getVal('f1'),source_type:getVal('f2'),connection:getVal('f3'),description:getVal('f4')}; },
+      dwtable: function(){ return {table_name:getVal('f1'),description:getVal('f2'),source_id:parseInt(getVal('f3'))||null}; },
+      task: function(){ return {task_name:getVal('f1'),task_type:getVal('f2'),source_id:parseInt(getVal('f3'))||null,target_table:getVal('f4'),schedule:getVal('f5')}; },
+      agent: function(){ return {name:getVal('f1'),description:getVal('f2'),agent_type:getVal('f3')}; }
+    };
+    var cfg = payloadMap[_modalType];
+    if (!cfg) return;
+    var isEdit = _modalAction === 'edit';
+    var url = {user:'/api/users',source:'/api/datasources',dwtable:'/api/dwtables',task:'/api/datatasks',agent:'/api/agents'}[_modalType];
+    if (!url) return;
+    var method = 'POST';
+    if (isEdit && (_modalType === 'user' || _modalType === 'source')) {
+      url = url + '/' + _editId; method = 'PUT';
+    }
+    try {
+      var res = await fetch(url, {method:method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(cfg())});
+      var json = await res.json();
+      if (json.code === 0) {
+        toast(json.message || '操作成功');
+        closeModal();
+        // 重新加载当前Tab
+        var reloadMap = {user:loadUsers,source:loadSources,dwtable:loadDWTables,task:loadTasks,agent:loadAgents};
+        if (reloadMap[_modalType]) reloadMap[_modalType]();
+      } else {
+        toast(json.message || '操作失败', 'error');
+      }
+    } catch(e) { toast('网络错误', 'error'); }
+  }
+
+  // ======== 操作函数 ========
+  async function deleteItem(type, id, name) {
+    if (!confirm('确定删除「' + name + '」？')) return;
+    var urlMap = {user:'/api/users/'+id, source:'/api/datasources/'+id};
+    var reloadMap = {user:loadUsers, source:loadSources};
+    try {
+      var r = await (await fetch(urlMap[type], {method:'DELETE'})).json();
+      if (r.code === 0) { toast('已删除'); reloadMap[type](); }
+      else toast(r.message, 'error');
+    } catch(e) { toast('删除失败', 'error'); }
+  }
+
+  async function execTask(id) {
+    try {
+      var r = await (await fetch('/api/datatasks/' + id + '/execute', {method:'POST'})).json();
+      if (r.code === 0) { toast(r.message); loadTasks(); }
+      else toast(r.message, 'error');
+    } catch(e) { toast('执行失败', 'error'); }
+  }
+
+  async function execAgent(id) {
+    try {
+      var r = await (await fetch('/api/agents/' + id + '/execute', {method:'POST'})).json();
+      if (r.code === 0) { toast('Agent 执行完成'); loadAgents(); }
+      else toast(r.data && r.data.message || '执行失败', 'error');
+    } catch(e) { toast('执行失败', 'error'); }
+  }
+
+  // ======== SQL 查询 ========
+  async function execQuery() {
+    var sql = $('#sql-input').value.trim();
+    if (!sql) { toast('请输入 SQL', 'error'); return; }
+    var box = $('#query-result');
+    box.textContent = '⏳ 执行中…';
+    try {
+      var r = await (await fetch('/api/query', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({sql:sql})})).json();
+      if (r.code === 0) box.textContent = JSON.stringify(r.data, null, 2);
+      else box.textContent = '❌ ' + r.message;
+    } catch(e) { box.textContent = '❌ 网络错误: ' + e.message; }
+  }
+
+  // ======== 按钮事件绑定 ========
+  $('#btn-add-user').addEventListener('click', function(){ openModal('user','add'); });
+  $('#btn-add-source').addEventListener('click', function(){ openModal('source','add'); });
+  $('#btn-add-dwtable').addEventListener('click', function(){ openModal('dwtable','add'); });
+  $('#btn-add-task').addEventListener('click', function(){ openModal('task','add'); });
+  $('#btn-add-agent').addEventListener('click', function(){ openModal('agent','add'); });
+  $('#btn-exec-query').addEventListener('click', execQuery);
+  $('#btn-example-query').addEventListener('click', function(){
+    $('#sql-input').value = 'SELECT username, role, department FROM users;'; execQuery();
+  });
+
+  // 弹窗事件
+  $('#btn-modal-cancel').addEventListener('click', closeModal);
+  $('#btn-modal-submit').addEventListener('click', submitModal);
+  $('#modal').addEventListener('click', function(e){ if (e.target === $('#modal')) closeModal(); });
+
+  // 键盘快捷键
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') closeModal();
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && currentTab === 'query') { e.preventDefault(); execQuery(); }
+  });
+
+  // ======== 初始化 ========
+  checkAuth();
+  loadDashboard();
+  console.log('✅ aiAgentOS 前端初始化完成 — 所有 Tab 已就绪');
+
+  // ══════════════════════════════════════════════════════════════
+  //  智能聊天子系统 — 后台管理
+  // ══════════════════════════════════════════════════════════════
+
+  // ── 群管理 ──
+  async function loadChatGroups() {
+    try {
+      var r = await (await fetch('/api/chat/admin/groups')).json();
+      if (r.code !== 0) return;
+      var groups = r.data;
+      var html = '';
+      groups.forEach(function(g){
+        var badge = g.status==='active'?'<span class="badge badge-active">正常</span>':
+                    g.status==='banned'?'<span class="badge badge-inactive">已封禁</span>':
+                    '<span class="badge badge-idle">'+g.status+'</span>';
+        html += '<tr><td>'+g.id+'</td><td><strong>'+g.name+'</strong></td><td>'+g.owner_name+'</td><td>'+g.member_count+'</td><td>'+badge+'</td><td>'+formatTs(g.created_at)+'</td>';
+        html += '<td style="white-space:nowrap">';
+        html += '<button class="btn btn-sm btn-ghost" onclick="viewGroupMembers('+g.id+')">👥成员</button> ';
+        html += '<button class="btn btn-sm btn-ghost" onclick="showGroupAnnounce('+g.id+')">📢公告</button> ';
+        if(g.status==='active'){
+          html += '<button class="btn btn-sm btn-danger" onclick="banGroup('+g.id+')">封禁</button> ';
+        }else{
+          html += '<button class="btn btn-sm btn-blue" onclick="unbanGroup('+g.id+')">解封</button> ';
+        }
+        html += '<button class="btn btn-sm btn-danger" onclick="adminDissolveGroup('+g.id+')">解散</button>';
+        html += '</td></tr>';
+      });
+      document.getElementById('chat-groups-tbody').innerHTML = html || '<tr><td colspan="7"><div class="empty-state"><span class="eicon">📭</span>暂无群聊</div></td></tr>';
+    } catch(e) {}
+  }
+
+  async function viewGroupMembers(gid) {
+    try {
+      var r = await (await fetch('/api/chat/groups/'+gid+'/members')).json();
+      if (r.code !== 0) return;
+      var members = r.data;
+      var html = '<div style="max-height:300px;overflow-y:auto">';
+      members.forEach(function(m){
+        html += '<div style="padding:8px 0;border-bottom:1px solid #21262d;display:flex;justify-content:space-between">';
+        html += '<span>'+(m.real_name||m.username)+' <span style="color:#484f58">['+m.role+']</span></span>';
+        if(m.role!=='owner'){
+          html += '<button class="btn btn-sm btn-danger" onclick="adminKickMember('+gid+','+m.user_id+')">移出</button>';
+        }
+        html += '</div>';
+      });
+      html += '</div>';
+      openCustomModal('群成员('+members.length+'人)', html, '');
+    } catch(e) {}
+  }
+
+  async function showGroupAnnounce(gid) {
+    var announcement = prompt('输入群公告（系统级）：');
+    if (announcement === null) return;
+    await fetch('/api/chat/admin/groups/'+gid+'/announcement', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({announcement:announcement})});
+    toast('公告已发送');
+  }
+
+  async function banGroup(gid) {
+    await fetch('/api/chat/admin/groups/'+gid+'/status', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'banned'})});
+    toast('群已被封禁'); loadChatGroups();
+  }
+
+  async function unbanGroup(gid) {
+    await fetch('/api/chat/admin/groups/'+gid+'/status', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'active'})});
+    toast('群已解封'); loadChatGroups();
+  }
+
+  async function adminDissolveGroup(gid) {
+    if(!confirm('确定解散该群？此操作不可恢复！')) return;
+    await fetch('/api/chat/groups/'+gid+'/dissolve', {method:'POST'});
+    toast('群已解散'); loadChatGroups();
+  }
+
+  async function adminKickMember(gid, uid) {
+    if(!confirm('确定移出该成员？')) return;
+    await fetch('/api/chat/groups/kick', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({group_id:gid,user_id:uid})});
+    toast('成员已移出'); viewGroupMembers(gid);
+  }
+
+  // ── 文件管理 ──
+  async function loadChatFiles() {
+    try {
+      var r = await (await fetch('/api/chat/admin/files')).json();
+      if (r.code !== 0) return;
+      var files = r.data;
+      var html = '';
+      files.forEach(function(f){
+        html += '<tr><td>'+f.id+'</td><td>'+f.file_name+'</td><td>'+formatFileSize(f.file_size)+'</td><td>'+f.mime_type+'</td><td>'+f.ref_count+'</td><td>'+f.uploader_name+'</td><td>'+formatTs(f.created_at)+'</td>';
+        html += '<td><button class="btn btn-sm btn-danger" onclick="adminDeleteFile('+f.id+')">删除</button></td></tr>';
+      });
+      document.getElementById('chat-files-tbody').innerHTML = html || '<tr><td colspan="8"><div class="empty-state"><span class="eicon">📭</span>暂无文件</div></td></tr>';
+    } catch(e) {}
+  }
+
+  async function adminDeleteFile(fid) {
+    if(!confirm('确定删除该文件？')) return;
+    await fetch('/api/chat/admin/files/'+fid, {method:'DELETE'});
+    toast('文件已删除'); loadChatFiles();
+  }
+
+  // ── 服务器管理 ──
+  async function loadChatServers() {
+    try {
+      var r = await (await fetch('/api/chat/servers')).json();
+      if (r.code !== 0) return;
+      var servers = r.data;
+      var html = '';
+      servers.forEach(function(s){
+        var badge = s.status==='active'?'<span class="badge badge-active">运行中</span>':
+                    s.status==='standby'?'<span class="badge badge-idle">待机</span>':
+                    '<span class="badge badge-inactive">离线</span>';
+        html += '<tr><td>'+s.id+'</td><td><strong>'+s.name+'</strong></td><td>'+s.host+'</td><td>'+s.port+'</td><td>'+badge+'</td>';
+        html += '<td>'+(s.is_default?'<span class="badge badge-active">默认</span>':'')+'</td>';
+        html += '<td>'+s.load_score+'</td>';
+        html += '<td style="white-space:nowrap">';
+        html += '<button class="btn btn-sm btn-ghost" onclick="editChatServer('+s.id+')">编辑</button> ';
+        html += '<button class="btn btn-sm btn-danger" onclick="deleteChatServer('+s.id+')">删除</button>';
+        html += '</td></tr>';
+      });
+      document.getElementById('chat-servers-tbody').innerHTML = html || '<tr><td colspan="8"><div class="empty-state"><span class="eicon">📭</span>暂无服务器</div></td></tr>';
+    } catch(e) {}
+  }
+
+  function showAddChatServer() {
+    openCustomModal('添加聊天服务器',
+      '<div class="form-group"><label>名称</label><input id="cs-name" placeholder="服务器名称" /></div>'+
+      '<div class="form-group"><label>主机</label><input id="cs-host" value="localhost" /></div>'+
+      '<div class="form-group"><label>端口</label><input id="cs-port" type="number" value="5000" /></div>'+
+      '<div class="form-group"><label>状态</label><select id="cs-status"><option value="active">运行中</option><option value="standby">待机</option></select></div>'+
+      '<div class="form-group"><label><input type="checkbox" id="cs-default" /> 设为默认</label></div>',
+      '<button class="btn btn-primary" onclick="doAddChatServer()">添加</button> <button class="btn btn-ghost" onclick="closeModal()">取消</button>'
+    );
+  }
+
+  async function doAddChatServer() {
+    await fetch('/api/chat/servers', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:document.getElementById('cs-name').value, host:document.getElementById('cs-host').value,
+      port:parseInt(document.getElementById('cs-port').value)||5000,
+      status:document.getElementById('cs-status').value,
+      is_default:document.getElementById('cs-default').checked?1:0
+    })});
+    toast('服务器已添加'); closeModal(); loadChatServers();
+  }
+
+  async function editChatServer(sid) {
+    var r = await (await fetch('/api/chat/servers')).json();
+    var s = null;
+    r.data.forEach(function(x){ if(x.id===sid) s=x; });
+    if(!s) return;
+    openCustomModal('编辑服务器',
+      '<div class="form-group"><label>名称</label><input id="cs-name" value="'+s.name+'" /></div>'+
+      '<div class="form-group"><label>主机</label><input id="cs-host" value="'+s.host+'" /></div>'+
+      '<div class="form-group"><label>端口</label><input id="cs-port" type="number" value="'+s.port+'" /></div>'+
+      '<div class="form-group"><label>状态</label><select id="cs-status"><option value="active" '+(s.status==='active'?'selected':'')+'>运行中</option><option value="standby" '+(s.status==='standby'?'selected':'')+'>待机</option></select></div>'+
+      '<div class="form-group"><label><input type="checkbox" id="cs-default" '+(s.is_default?'checked':'')+' /> 设为默认</label></div>',
+      '<button class="btn btn-primary" onclick="doUpdateChatServer('+sid+')">保存</button> <button class="btn btn-ghost" onclick="closeModal()">取消</button>'
+    );
+  }
+
+  async function doUpdateChatServer(sid) {
+    await fetch('/api/chat/servers/'+sid, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:document.getElementById('cs-name').value, host:document.getElementById('cs-host').value,
+      port:parseInt(document.getElementById('cs-port').value)||5000,
+      status:document.getElementById('cs-status').value,
+      is_default:document.getElementById('cs-default').checked?1:0
+    })});
+    toast('已更新'); closeModal(); loadChatServers();
+  }
+
+  async function deleteChatServer(sid) {
+    if(!confirm('确定删除该服务器？')) return;
+    await fetch('/api/chat/servers/'+sid, {method:'DELETE'});
+    toast('已删除'); loadChatServers();
+  }
+
+  // ── 数字员工 & 工具管理 ──
+  async function loadChatTools() {
+    loadDEs(); loadTools();
+  }
+
+  async function loadDEs() {
+    try {
+      var r = await (await fetch('/api/chat/de')).json();
+      if (r.code !== 0) return;
+      var des = r.data;
+      var html = '';
+      des.forEach(function(de){
+        var badge = de.status==='active'?'<span class="badge badge-active">启用</span>':'<span class="badge badge-inactive">停用</span>';
+        html += '<tr><td><strong>'+de.avatar+' '+de.name+'</strong><br><small style="color:#8b949e">'+de.description+'</small></td>';
+        html += '<td><span class="badge badge-sqlite">'+de.de_type+'</span></td><td><small>'+de.tools+'</small></td><td>'+badge+'</td>';
+        html += '<td style="white-space:nowrap">';
+        html += '<button class="btn btn-sm btn-ghost" onclick="showBindTool('+de.id+',\''+de.name+'\')">绑定工具</button> ';
+        html += '<button class="btn btn-sm btn-ghost" onclick="editDE('+de.id+')">编辑</button> ';
+        html += '<button class="btn btn-sm btn-danger" onclick="deleteDE('+de.id+')">删除</button>';
+        html += '</td></tr>';
+      });
+      document.getElementById('chat-de-tbody').innerHTML = html;
+    } catch(e) {}
+  }
+
+  async function loadTools() {
+    try {
+      var r = await (await fetch('/api/chat/tools')).json();
+      if (r.code !== 0) return;
+      var tools = r.data;
+      var html = '';
+      tools.forEach(function(t){
+        var badge = t.status==='active'?'<span class="badge badge-active">启用</span>':'<span class="badge badge-inactive">停用</span>';
+        html += '<tr><td><strong>'+t.name+'</strong><br><small style="color:#8b949e">'+t.description+'</small></td>';
+        html += '<td><span class="badge badge-sqlite">'+t.tool_type+'</span></td><td><small>'+t.bound_de+'</small></td><td>'+badge+'</td>';
+        html += '<td style="white-space:nowrap">';
+        html += '<button class="btn btn-sm btn-ghost" onclick="editTool('+t.id+')">编辑</button> ';
+        html += '<button class="btn btn-sm btn-danger" onclick="deleteTool('+t.id+')">删除</button>';
+        html += '</td></tr>';
+      });
+      document.getElementById('chat-tools-tbody').innerHTML = html;
+    } catch(e) {}
+  }
+
+  function showAddDE() {
+    openCustomModal('新增数字员工',
+      '<div class="form-group"><label>名称</label><input id="de-name" /></div>'+
+      '<div class="form-group"><label>头像(emoji)</label><input id="de-avatar" value="🤖" /></div>'+
+      '<div class="form-group"><label>描述</label><input id="de-desc" /></div>'+
+      '<div class="form-group"><label>类型</label><select id="de-type"><option value="custom">自定义</option><option value="assistant">助手</option><option value="bot">机器人</option></select></div>'+
+      '<div class="form-group"><label>配置(JSON)</label><textarea id="de-config">{}</textarea></div>',
+      '<button class="btn btn-primary" onclick="doAddDE()">添加</button> <button class="btn btn-ghost" onclick="closeModal()">取消</button>'
+    );
+  }
+
+  async function doAddDE() {
+    await fetch('/api/chat/de', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:document.getElementById('de-name').value, avatar:document.getElementById('de-avatar').value,
+      description:document.getElementById('de-desc').value, de_type:document.getElementById('de-type').value,
+      config:document.getElementById('de-config').value
+    })});
+    toast('已添加'); closeModal(); loadDEs();
+  }
+
+  async function editDE(deid) {
+    var r = await (await fetch('/api/chat/de')).json();
+    var de = null; r.data.forEach(function(x){ if(x.id===deid) de=x; });
+    if(!de) return;
+    openCustomModal('编辑数字员工',
+      '<div class="form-group"><label>名称</label><input id="de-name" value="'+de.name+'" /></div>'+
+      '<div class="form-group"><label>头像</label><input id="de-avatar" value="'+de.avatar+'" /></div>'+
+      '<div class="form-group"><label>描述</label><input id="de-desc" value="'+de.description+'" /></div>'+
+      '<div class="form-group"><label>类型</label><select id="de-type"><option value="custom" '+(de.de_type==='custom'?'selected':'')+'>自定义</option><option value="assistant" '+(de.de_type==='assistant'?'selected':'')+'>助手</option><option value="bot" '+(de.de_type==='bot'?'selected':'')+'>机器人</option></select></div>'+
+      '<div class="form-group"><label>状态</label><select id="de-status"><option value="active" '+(de.status==='active'?'selected':'')+'>启用</option><option value="inactive" '+(de.status==='inactive'?'selected':'')+'>停用</option></select></div>'+
+      '<div class="form-group"><label>配置</label><textarea id="de-config">'+de.config+'</textarea></div>',
+      '<button class="btn btn-primary" onclick="doUpdateDE('+deid+')">保存</button> <button class="btn btn-ghost" onclick="closeModal()">取消</button>'
+    );
+  }
+
+  async function doUpdateDE(deid) {
+    await fetch('/api/chat/de/'+deid, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:document.getElementById('de-name').value, avatar:document.getElementById('de-avatar').value,
+      description:document.getElementById('de-desc').value, de_type:document.getElementById('de-type').value,
+      config:document.getElementById('de-config').value, status:document.getElementById('de-status').value
+    })});
+    toast('已更新'); closeModal(); loadDEs();
+  }
+
+  async function deleteDE(deid) {
+    if(!confirm('确定删除该数字员工？')) return;
+    await fetch('/api/chat/de/'+deid, {method:'DELETE'});
+    toast('已删除'); loadDEs();
+  }
+
+  function showAddTool() {
+    openCustomModal('新增工具',
+      '<div class="form-group"><label>名称</label><input id="tool-name" /></div>'+
+      '<div class="form-group"><label>描述</label><input id="tool-desc" /></div>'+
+      '<div class="form-group"><label>类型</label><select id="tool-type"><option value="api">API</option><option value="knowledge">知识库</option><option value="random">随机</option><option value="query">查询</option><option value="analysis">分析</option><option value="search">搜索</option></select></div>'+
+      '<div class="form-group"><label>配置(JSON)</label><textarea id="tool-config">{}</textarea></div>',
+      '<button class="btn btn-primary" onclick="doAddTool()">添加</button> <button class="btn btn-ghost" onclick="closeModal()">取消</button>'
+    );
+  }
+
+  async function doAddTool() {
+    await fetch('/api/chat/tools', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:document.getElementById('tool-name').value, description:document.getElementById('tool-desc').value,
+      tool_type:document.getElementById('tool-type').value, config:document.getElementById('tool-config').value
+    })});
+    toast('已添加'); closeModal(); loadTools();
+  }
+
+  async function editTool(tid) {
+    var r = await (await fetch('/api/chat/tools')).json();
+    var t = null; r.data.forEach(function(x){ if(x.id===tid) t=x; });
+    if(!t) return;
+    openCustomModal('编辑工具',
+      '<div class="form-group"><label>名称</label><input id="tool-name" value="'+t.name+'" /></div>'+
+      '<div class="form-group"><label>描述</label><input id="tool-desc" value="'+t.description+'" /></div>'+
+      '<div class="form-group"><label>类型</label><select id="tool-type">'+
+        ['api','knowledge','random','query','analysis','search'].map(function(x){return '<option value="'+x+'" '+(t.tool_type===x?'selected':'')+'>'+x+'</option>';}).join('')+
+      '</select></div>'+
+      '<div class="form-group"><label>状态</label><select id="tool-status"><option value="active" '+(t.status==='active'?'selected':'')+'>启用</option><option value="inactive" '+(t.status==='inactive'?'selected':'')+'>停用</option></select></div>'+
+      '<div class="form-group"><label>配置</label><textarea id="tool-config">'+t.config+'</textarea></div>',
+      '<button class="btn btn-primary" onclick="doUpdateTool('+tid+')">保存</button> <button class="btn btn-ghost" onclick="closeModal()">取消</button>'
+    );
+  }
+
+  async function doUpdateTool(tid) {
+    await fetch('/api/chat/tools/'+tid, {method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:document.getElementById('tool-name').value, description:document.getElementById('tool-desc').value,
+      tool_type:document.getElementById('tool-type').value, config:document.getElementById('tool-config').value,
+      status:document.getElementById('tool-status').value
+    })});
+    toast('已更新'); closeModal(); loadTools();
+  }
+
+  async function deleteTool(tid) {
+    if(!confirm('确定删除该工具？')) return;
+    await fetch('/api/chat/tools/'+tid, {method:'DELETE'});
+    toast('已删除'); loadTools();
+  }
+
+  async function showBindTool(deId, deName) {
+    var r1 = await (await fetch('/api/chat/tools')).json();
+    var r2 = await (await fetch('/api/chat/de')).json();
+    var allTools = r1.data || [];
+    // 已绑定的工具
+    var de = null; (r2.data||[]).forEach(function(x){ if(x.id===deId) de=x; });
+    var boundTools = de && de.tools ? de.tools.split(',') : [];
+    
+    var html = '<p style="margin-bottom:12px;color:#8b949e">为 <strong>'+deName+'</strong> 选择绑定工具：</p><div style="max-height:250px;overflow-y:auto">';
+    allTools.forEach(function(t){
+      var checked = boundTools.indexOf(t.name)>=0 ? 'checked' : '';
+      html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">';
+      html += '<input type="checkbox" value="'+t.id+'" class="bind-tool-cb" '+checked+' /> '+t.name+' ('+t.tool_type+')';
+      html += '</label>';
+    });
+    html += '</div>';
+    openCustomModal('绑定工具 — '+deName, html,
+      '<button class="btn btn-primary" onclick="doBindTools('+deId+')">保存绑定</button> <button class="btn btn-ghost" onclick="closeModal()">取消</button>'
+    );
+  }
+
+  async function doBindTools(deId) {
+    var r = await (await fetch('/api/chat/tools')).json();
+    var allTools = r.data || [];
+    var cbs = document.querySelectorAll('.bind-tool-cb:checked');
+    var checkedIds = [];
+    cbs.forEach(function(cb){ checkedIds.push(parseInt(cb.value)); });
+    
+    // 先全部解绑，再重新绑定
+    allTools.forEach(function(t){
+      // 解绑所有工具
+    });
+    for(var i=0;i<checkedIds.length;i++){
+      await fetch('/api/chat/tools/bind', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({de_id:deId,tool_id:checkedIds[i]})});
+    }
+    toast('绑定已更新'); closeModal(); loadDEs();
+  }
+
+  function openCustomModal(title, bodyHtml, footerHtml) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-body').innerHTML = bodyHtml;
+    document.getElementById('modal-footer').innerHTML = footerHtml || '<button class="btn btn-ghost" onclick="closeModal()">关闭</button>';
+    document.getElementById('modal').classList.remove('hidden');
+  }
+
+  function formatFileSize(bytes) {
+    if(!bytes) return '0 B';
+    if(bytes<1024) return bytes+' B';
+    if(bytes<1048576) return (bytes/1024).toFixed(1)+' KB';
+    return (bytes/1048576).toFixed(1)+' MB';
+  }
+
+  function formatTs(ts) {
+    if(!ts) return '-';
+    return ts.replace('T',' ').substring(0,19);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  智慧舆情 — 舆情分析
+  // ══════════════════════════════════════════════════════════════
+
+  async function loadSentiment(){
+    await loadSentimentReports();
+    await loadRiskAlerts();
+  }
+
+  async function loadSentimentReports(){
+    try{
+      var r=await(await fetch('/api/sentiment/reports?limit=20')).json();
+      if(r.code!==0)return;
+      var reports=r.data||[];
+      if(reports.length>0){
+        var latest=reports[0];
+        document.getElementById('ss-total').textContent=latest.total_msgs||0;
+        document.getElementById('ss-pos').textContent=(latest.positive||0)+'条';
+        document.getElementById('ss-neg').textContent=(latest.negative||0)+'条';
+        document.getElementById('ss-risk').textContent=latest.avg_score||0;
+      }
+      var lvlMap={positive:'<span class="badge badge-active">正面</span>',negative:'<span class="badge badge-inactive">负面</span>',neutral:'<span class="badge badge-idle">中性</span>'};
+      document.getElementById('sentiment-reports-tbody').innerHTML=reports.map(function(rp){
+        return '<tr><td>#'+rp.id+'</td><td>'+rp.report_type+'</td><td>'+rp.period+'</td><td>'+rp.total_msgs+'</td>'+
+          '<td>'+rp.positive+'/'+rp.negative+'</td><td>'+rp.avg_score+'</td><td>'+formatTs(rp.created_at)+'</td></tr>';
+      }).join('')||'<tr><td colspan="7" class="empty-state">暂无报告，点击"立即分析"生成</td></tr>';
+    }catch(e){}
+  }
+
+  async function runSentimentAnalysis(){
+    toast('⏳ 正在分析…');
+    try{
+      var r=await(await fetch('/api/sentiment/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hours:168,type:'manual'})})).json();
+      if(r.code===0){
+        toast('✅ 分析完成，报告 #'+r.data.report_id);
+        loadSentimentReports();
+      }else toast(r.message,'error');
+    }catch(e){toast('分析失败','error');}
+  }
+
+  async function loadRiskAlerts(){
+    try{
+      var r=await(await fetch('/api/sentiment/alerts?limit=50')).json();
+      if(r.code!==0)return;
+      var alerts=r.data||[];
+      var lvlBadge={high:'<span class="badge badge-inactive">🔴 高危</span>',medium:'<span class="badge badge-idle">🟡 中危</span>',low:'<span class="badge badge-active">🟢 低危</span>'};
+      var stBadge={new:'<span class="badge badge-idle">未处理</span>',handled:'<span class="badge badge-active">已处理</span>',ignored:'<span class="badge badge-viewer">已忽略</span>'};
+      document.getElementById('risk-alerts-tbody').innerHTML=alerts.map(function(a){
+        return '<tr><td>'+(lvlBadge[a.level]||a.level)+'</td><td><strong>'+a.word+'</strong></td><td>'+a.source+'</td><td>'+(stBadge[a.status]||a.status)+'</td><td>'+formatTs(a.created_at)+'</td>'+
+          '<td>'+(a.status==='new'?'<button class="btn btn-sm btn-blue" onclick="handleRiskAlert('+a.id+',\'handle\')">处理</button> <button class="btn btn-sm btn-ghost" onclick="handleRiskAlert('+a.id+',\'ignore\')">忽略</button>':'')+
+          '</td></tr>';
+      }).join('')||'<tr><td colspan="6" class="empty-state">✅ 暂无风险告警</td></tr>';
+    }catch(e){}
+  }
+
+  async function handleRiskAlert(aid, action){
+    await fetch('/api/sentiment/alerts/'+aid+'/handle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:1,action:action})});
+    toast(action==='handle'?'已处理':'已忽略');loadRiskAlerts();
+  }
+
+  async function runRiskScan(){
+    toast('⏳ 正在扫描…');
+    try{
+      var r=await(await fetch('/api/sentiment/risk-scan',{method:'POST'})).json();
+      if(r.code===0){toast('发现 '+r.data.risks_found+' 个风险');loadRiskAlerts();}
+      else toast(r.message,'error');
+    }catch(e){toast('扫描失败','error');}
+  }
+
+  async function analyzeSingleText(){
+    var text=document.getElementById('sentiment-input').value.trim();
+    if(!text){toast('请输入文本','error');return;}
+    try{
+      var r=await(await fetch('/api/sentiment/single',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text})})).json();
+      if(r.code===0){
+        var d=r.data;
+        var emoji=d.sentiment.label==='positive'?'😊':d.sentiment.label==='negative'?'😞':'😐';
+        var labelCN={positive:'正面',negative:'负面',neutral:'中性'};
+        document.getElementById('sentiment-result').innerHTML='<strong>'+emoji+' 情感：'+labelCN[d.sentiment.label]+
+          '（得分：'+d.sentiment.score.toFixed(3)+'）</strong>'+
+          (d.sentiment.keywords.length?'<br>关键词：'+d.sentiment.keywords.join('、'):'')+
+          (d.risks.length?'<br>⚠️ 风险词：'+d.risks.map(function(x){return x.word+'('+x.level+')';}).join('、'):'');
+      }
+    }catch(e){}
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  自动化任务管理
+  // ══════════════════════════════════════════════════════════════
+
+  async function loadAutomation(){
+    await loadAutoTasks();
+    await loadAutoLogs();
+  }
+
+  async function loadAutoTasks(){
+    try{
+      var r=await(await fetch('/api/automation/tasks')).json();
+      if(r.code!==0)return;
+      var tasks=r.data||[];
+      var activeCount=tasks.filter(function(t){return t.status==='active';}).length;
+      var pausedCount=tasks.filter(function(t){return t.status==='paused';}).length;
+      var totalRuns=tasks.reduce(function(s,t){return s+(t.run_count||0);},0);
+      document.getElementById('as-total').textContent=tasks.length;
+      document.getElementById('as-active').textContent=activeCount;
+      document.getElementById('as-paused').textContent=pausedCount;
+      document.getElementById('as-executed').textContent=totalRuns;
+
+      var typeMap={crawl:'<span class="badge badge-sqlite">爬取</span>',sentiment:'<span class="badge badge-editor">舆情</span>',risk_scan:'<span class="badge badge-inactive">风控</span>',data_sync:'<span class="badge badge-done">同步</span>',cleanup:'<span class="badge badge-viewer">清理</span>',stats:'<span class="badge badge-admin">统计</span>'};
+      var stMap={active:'<span class="badge badge-active">活跃</span>',paused:'<span class="badge badge-idle">暂停</span>',error:'<span class="badge badge-inactive">错误</span>'};
+      document.getElementById('auto-tasks-tbody').innerHTML=tasks.map(function(t){
+        return '<tr><td>'+t.id+'</td><td><strong>'+t.task_name+'</strong></td><td>'+(typeMap[t.task_type]||t.task_type)+'</td>'+
+          '<td><code style="font-size:10px">'+t.schedule+'</code></td><td>'+(stMap[t.status]||t.status)+'</td>'+
+          '<td>'+t.run_count+'</td><td>'+formatTs(t.last_run)+'</td>'+
+          '<td style="white-space:nowrap">'+
+          '<button class="btn btn-sm btn-blue" onclick="execAutoTask('+t.id+')">▶ 执行</button> '+
+          '<button class="btn btn-sm btn-ghost" onclick="editAutoTask('+t.id+')">编辑</button> '+
+          '<button class="btn btn-sm btn-danger" onclick="delAutoTask('+t.id+')">删除</button>'+
+          '</td></tr>';
+      }).join('')||'<tr><td colspan="8" class="empty-state">暂无自动任务</td></tr>';
+    }catch(e){}
+  }
+
+  async function loadAutoLogs(){
+    try{
+      var r=await(await fetch('/api/automation/logs?limit=20')).json();
+      if(r.code!==0)return;
+      var logs=r.data||[];
+      var stMap={done:'<span class="badge badge-active">✅</span>',error:'<span class="badge badge-inactive">❌</span>',running:'<span class="badge badge-idle">⏳</span>'};
+      document.getElementById('auto-logs-tbody').innerHTML=logs.map(function(l){
+        var res='';try{var j=JSON.parse(l.result||'{}');res=j.message||j.status||'-';}catch(e){res=(l.result||'-').substring(0,50);}
+        return '<tr><td>'+l.task_name+'</td><td>'+(stMap[l.status]||l.status)+'</td><td>'+(l.elapsed||0)+'s</td><td style="font-size:11px">'+res+'</td><td>'+formatTs(l.created_at)+'</td></tr>';
+      }).join('')||'<tr><td colspan="5" class="empty-state">暂无执行日志</td></tr>';
+    }catch(e){}
+  }
+
+  async function execAutoTask(tid){
+    toast('⏳ 执行中…');
+    try{
+      var r=await(await fetch('/api/automation/tasks/'+tid+'/execute',{method:'POST'})).json();
+      if(r.code===0){toast('✅ '+(r.data.result.message||'执行完成'));loadAutomation();}
+      else toast(r.message,'error');
+    }catch(e){toast('执行失败','error');}
+  }
+
+  async function executeAllAutoTasks(){
+    toast('⏳ 批量执行中…');
+    try{
+      var r=await(await fetch('/api/automation/execute-all',{method:'POST'})).json();
+      if(r.code===0){toast('✅ 已执行 '+r.data.total+' 个任务');loadAutomation();}
+      else toast(r.message,'error');
+    }catch(e){toast('批量执行失败','error');}
+  }
+
+  function showAddAutoTask(){
+    openCustomModal('新建自动任务',
+      '<div class="form-group"><label>任务名称</label><input id="at-name" /></div>'+
+      '<div class="form-group"><label>任务类型</label><select id="at-type">'+
+        '<option value="crawl">爬取</option><option value="sentiment">舆情分析</option>'+
+        '<option value="risk_scan">风险扫描</option><option value="data_sync">数据同步</option>'+
+        '<option value="cleanup">文件清理</option><option value="stats">统计分析</option>'+
+      '</select></div>'+
+      '<div class="form-group"><label>调度表达式</label><input id="at-schedule" placeholder="如: 0 */6 * * *" /></div>'+
+      '<div class="form-group"><label>配置(JSON)</label><textarea id="at-config">{}</textarea></div>'+
+      '<div class="form-group"><label>状态</label><select id="at-status"><option value="active">活跃</option><option value="paused">暂停</option></select></div>',
+      '<button class="btn btn-primary" onclick="doAddAutoTask()">创建</button> <button class="btn btn-ghost" onclick="closeModal()">取消</button>'
+    );
+  }
+
+  async function doAddAutoTask(){
+    await fetch('/api/automation/tasks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      task_name:document.getElementById('at-name').value, task_type:document.getElementById('at-type').value,
+      config:document.getElementById('at-config').value, schedule:document.getElementById('at-schedule').value,
+      status:document.getElementById('at-status').value
+    })});
+    toast('任务已创建');closeModal();loadAutomation();
+  }
+
+  async function editAutoTask(tid){
+    var r=await(await fetch('/api/automation/tasks')).json();
+    var t=null; (r.data||[]).forEach(function(x){if(x.id===tid)t=x;});
+    if(!t)return;
+    openCustomModal('编辑自动任务',
+      '<div class="form-group"><label>任务名称</label><input id="at-name" value="'+t.task_name+'" /></div>'+
+      '<div class="form-group"><label>任务类型</label><select id="at-type">'+
+        ['crawl','sentiment','risk_scan','data_sync','cleanup','stats'].map(function(x){return '<option value="'+x+'" '+(t.task_type===x?'selected':'')+'>'+x+'</option>';}).join('')+
+      '</select></div>'+
+      '<div class="form-group"><label>调度表达式</label><input id="at-schedule" value="'+t.schedule+'" /></div>'+
+      '<div class="form-group"><label>配置(JSON)</label><textarea id="at-config">'+t.config+'</textarea></div>'+
+      '<div class="form-group"><label>状态</label><select id="at-status"><option value="active" '+(t.status==='active'?'selected':'')+'>活跃</option><option value="paused" '+(t.status==='paused'?'selected':'')+'>暂停</option></select></div>',
+      '<button class="btn btn-primary" onclick="doUpdateAutoTask('+tid+')">保存</button> <button class="btn btn-ghost" onclick="closeModal()">取消</button>'
+    );
+  }
+
+  async function doUpdateAutoTask(tid){
+    await fetch('/api/automation/tasks/'+tid,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      task_name:document.getElementById('at-name').value, task_type:document.getElementById('at-type').value,
+      config:document.getElementById('at-config').value, schedule:document.getElementById('at-schedule').value,
+      status:document.getElementById('at-status').value
+    })});
+    toast('已更新');closeModal();loadAutomation();
+  }
+
+  async function delAutoTask(tid){
+    if(!confirm('确定删除该自动任务？'))return;
+    await fetch('/api/automation/tasks/'+tid,{method:'DELETE'});
+    toast('已删除');loadAutomation();
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  //  多数据库管理
+  // ══════════════════════════════════════════════════════════════
+
+  async function loadDbManagement(){
+    try{
+      var r=await(await fetch('/api/db/status')).json();
+      if(r.code!==0)return;
+      var d=r.data;
+      var badge=document.getElementById('db-backend-badge');
+      if(d.backend==='mysql'){
+        badge.innerHTML='🐬 <strong style="color:#d29922">MySQL</strong> ('+(d.mysql_config.host||'')+':'+(d.mysql_config.port||'')+'/'+(d.mysql_config.database||'')+')';
+        document.getElementById('card-mysql').style.borderColor='#d29922';
+        document.getElementById('card-sqlite').style.borderColor='#21262d';
+        document.getElementById('btn-switch-sqlite').style.display='block';
+      }else{
+        badge.innerHTML='📦 <strong style="color:#58a6ff">SQLite</strong> (data.db)';
+        document.getElementById('card-sqlite').style.borderColor='#58a6ff';
+        document.getElementById('card-mysql').style.borderColor='#21262d';
+      }
+      var info='<strong>当前后端：</strong>'+d.backend.toUpperCase();
+      if(d.backend==='mysql'){
+        info+='<br>主机：'+d.mysql_config.host+':'+d.mysql_config.port;
+        info+='<br>用户：'+d.mysql_config.user;
+        info+='<br>数据库：'+d.mysql_config.database;
+      }else{
+        info+='<br>存储文件：data.db（项目根目录）';
+      }
+      info+='<br><br>💡 提示：切换后端后，新的连接和表结构会自动生效，无需重启服务。';
+      document.getElementById('db-status-info').innerHTML=info;
+    }catch(e){}
+  }
+
+  async function testMySQL(){
+    var host=document.getElementById('mysql-host').value.trim();
+    var port=parseInt(document.getElementById('mysql-port').value)||3306;
+    var user=document.getElementById('mysql-user').value.trim();
+    var password=document.getElementById('mysql-password').value;
+    var database=document.getElementById('mysql-database').value.trim();
+    if(!host||!user||!database){toast('请填写主机、用户名和数据库名','error');return;}
+    toast('⏳ 正在测试 MySQL 连接…');
+    try{
+      var r=await(await fetch('/api/db/test-mysql',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({host:host,port:port,user:user,password:password,database:database})})).json();
+      if(r.success){toast('✅ '+r.message);}
+      else{toast('❌ '+r.message,'error');}
+    }catch(e){toast('测试请求失败','error');}
+  }
+
+  async function switchToMySQL(){
+    var host=document.getElementById('mysql-host').value.trim();
+    var port=parseInt(document.getElementById('mysql-port').value)||3306;
+    var user=document.getElementById('mysql-user').value.trim();
+    var password=document.getElementById('mysql-password').value;
+    var database=document.getElementById('mysql-database').value.trim();
+    if(!host||!user||!database){toast('请填写完整的 MySQL 连接信息','error');return;}
+    if(!confirm('确定切换到 MySQL？\n\n'+host+':'+port+'/'+database+'\n\n切换后所有数据将使用 MySQL 存储，SQLite 数据不会丢失。'))return;
+    toast('⏳ 正在切换并初始化 MySQL…');
+    try{
+      var r=await(await fetch('/api/db/switch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({backend:'mysql',host:host,port:port,user:user,password:password,database:database})})).json();
+      if(r.code===0){toast('✅ '+r.message);loadDbManagement();loadDashboard();}
+      else{toast('❌ '+r.message,'error');}
+    }catch(e){toast('切换失败','error');}
+  }
+
+  async function switchToSQLite(){
+    if(!confirm('确定切换回 SQLite？\n\n切换后所有数据将使用 SQLite 存储。'))return;
+    toast('⏳ 正在切换到 SQLite…');
+    try{
+      var r=await(await fetch('/api/db/switch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({backend:'sqlite'})})).json();
+      if(r.code===0){toast('✅ '+r.message);loadDbManagement();loadDashboard();}
+      else{toast('❌ '+r.message,'error');}
+    }catch(e){toast('切换失败','error');}
+  }
+})();
+</script>
+</body>
+</html>

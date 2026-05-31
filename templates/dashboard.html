@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数智大屏 — aiAgentOS</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/dist/echarts-gl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-wordcloud@2.1.0/dist/echarts-wordcloud.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#0a0e27;color:#e0e6ed;min-height:100vh;overflow-x:hidden}
+.bg-stars{position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 20% 50%,rgba(30,60,180,.15) 0%,transparent 50%),
+  radial-gradient(ellipse at 80% 20%,rgba(100,50,200,.1) 0%,transparent 50%),
+  radial-gradient(ellipse at 50% 80%,rgba(20,120,200,.1) 0%,transparent 50%);z-index:0}
+
+.header{position:relative;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 24px;
+  background:linear-gradient(180deg,rgba(15,20,45,.95),rgba(10,14,39,.8));border-bottom:1px solid rgba(88,166,255,.15)}
+.header h1{font-size:22px;background:linear-gradient(90deg,#58a6ff,#bc8cff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .nav-links{display:flex;gap:12px}
+.header .nav-links a{color:#8b949e;text-decoration:none;font-size:12px;padding:6px 14px;border-radius:6px;border:1px solid rgba(255,255,255,.1);transition:all .2s}
+.header .nav-links a:hover{color:#fff;border-color:#58a6ff;background:rgba(88,166,255,.1)}
+.header .clock{font-size:28px;font-weight:300;color:#58a6ff;font-variant-numeric:tabular-nums}
+
+.main{position:relative;z-index:5;display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto auto;gap:12px;padding:12px 16px;max-width:1600px;margin:0 auto}
+
+.stat-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.stat-card{background:linear-gradient(135deg,rgba(22,27,44,.9),rgba(15,20,38,.95));border:1px solid rgba(88,166,255,.1);border-radius:10px;
+  padding:14px 18px;text-align:center;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card:nth-child(1)::before{background:#58a6ff}
+.stat-card:nth-child(2)::before{background:#3fb950}
+.stat-card:nth-child(3)::before{background:#d29922}
+.stat-card:nth-child(4)::before{background:#bc8cff}
+.stat-card:nth-child(5)::before{background:#f85149}
+.stat-card:nth-child(6)::before{background:#79c0ff}
+.stat-card .val{font-size:32px;font-weight:700;margin:4px 0}
+.stat-card .lbl{font-size:11px;color:#8b949e;letter-spacing:1px}
+.stat-card:nth-child(1) .val{color:#58a6ff}
+.stat-card:nth-child(2) .val{color:#3fb950}
+.stat-card:nth-child(3) .val{color:#d29922}
+.stat-card:nth-child(4) .val{color:#bc8cff}
+.stat-card:nth-child(5) .val{color:#f85149}
+.stat-card:nth-child(6) .val{color:#79c0ff}
+
+.chart-box{background:linear-gradient(135deg,rgba(22,27,44,.9),rgba(15,20,38,.95));border:1px solid rgba(88,166,255,.1);
+  border-radius:10px;padding:12px;position:relative;min-height:300px}
+.chart-box.full{grid-column:1/-1}
+.chart-box.wide{grid-column:span 2}
+.chart-box .box-title{font-size:13px;color:#8b949e;margin-bottom:6px;padding-left:4px;border-left:3px solid #58a6ff}
+
+.globe-container{grid-column:span 1;grid-row:span 2}
+.sentiment-row{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#8b949e;font-size:12px;z-index:1}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.loading span{animation:pulse 1.5s infinite}
+
+@media(max-width:1200px){.main{grid-template-columns:1fr 1fr}.globe-container{grid-column:span 2;grid-row:span 1}}
+@media(max-width:768px){.main{grid-template-columns:1fr}.stat-row{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<div class="bg-stars"></div>
+
+<div class="header">
+  <h1>🌍 aiAgentOS 数智大屏</h1>
+  <div class="clock" id="clock">--:--</div>
+  <div class="nav-links">
+    <a href="/">🏠 管理后台</a>
+    <a href="/chat">💬 智能聊天</a>
+    <a href="/dashboard" style="color:#58a6ff;border-color:#58a6ff">📊 数智大屏</a>
+  </div>
+</div>
+
+<div class="main">
+  <!-- 统计行 -->
+  <div class="stat-row" id="stat-row"></div>
+
+  <!-- 3D 地球 -->
+  <div class="chart-box globe-container" id="globe-box">
+    <div class="box-title">🌍 全球节点分布</div>
+    <div id="globe-chart" style="width:100%;height:520px"></div>
+  </div>
+
+  <!-- 消息趋势图 -->
+  <div class="chart-box wide" id="trend-box">
+    <div class="box-title">📈 24h消息趋势</div>
+    <div id="trend-chart" style="width:100%;height:250px"></div>
+  </div>
+
+  <!-- 情感趋势 -->
+  <div class="chart-box wide" id="sentiment-box">
+    <div class="box-title">💭 7天舆情趋势</div>
+    <div id="sentiment-chart" style="width:100%;height:270px"></div>
+  </div>
+
+  <!-- 舆情行 -->
+  <div class="sentiment-row">
+    <div class="chart-box" id="topic-box">
+      <div class="box-title">🏷️ 话题分布</div>
+      <div id="topic-chart" style="width:100%;height:260px"></div>
+    </div>
+    <div class="chart-box" id="risk-box">
+      <div class="box-title">⚠️ 风险等级分布</div>
+      <div id="risk-chart" style="width:100%;height:260px"></div>
+    </div>
+  </div>
+
+  <!-- 词云 -->
+  <div class="chart-box full" id="wordcloud-box">
+    <div class="box-title">☁️ 实时词云</div>
+    <div id="wordcloud-chart" style="width:100%;height:360px"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ═══ 时钟 ═══
+  function updateClock(){
+    var now=new Date();
+    var h=now.getHours(),m=now.getMinutes(),s=now.getSeconds();
+    document.getElementById('clock').textContent=[h,m,s].map(function(x){return x<10?'0'+x:x}).join(':');
+  }
+  updateClock();setInterval(updateClock,1000);
+
+  // ═══ 统计卡片 ═══
+  async function loadStats(){
+    try{
+      var r=await(await fetch('/api/stats/dashboard')).json();
+      if(r.code!==0)return;
+      var d=r.data;
+      var cards=[
+        {val:d.user_count||0,lbl:'👤 用户总数'},
+        {val:d.group_count||0,lbl:'👪 群组数量'},
+        {val:d.today_messages||0,lbl:'💬 今日消息'},
+        {val:d.de_count||0,lbl:'🤖 数字员工'},
+        {val:d.risk_alert_count||0,lbl:'⚠️ 风险告警'},
+        {val:d.auto_tasks_count||0,lbl:'⚡ 自动任务'}
+      ];
+      document.getElementById('stat-row').innerHTML=cards.map(function(c){
+        return '<div class="stat-card"><div class="val">'+c.val+'</div><div class="lbl">'+c.lbl+'</div></div>';
+      }).join('');
+    }catch(e){console.error(e)}
+  }
+
+  // ═══ 3D 地球 ═══
+  function initGlobe(){
+    var dom=document.getElementById('globe-chart');
+    var chart=echarts.init(dom);
+    // 模拟全球连接节点数据
+    var geoCoordMap={
+      '北京':[116.46,39.92],'上海':[121.48,31.22],'广州':[113.23,23.16],'成都':[104.06,30.67],
+      '雅安':[103.00,29.98],'东京':[139.69,35.69],'首尔':[126.98,37.56],'新加坡':[103.82,1.35],
+      '悉尼':[151.21,-33.87],'伦敦':[-0.13,51.51],'纽约':[-74.01,40.71],'旧金山':[-122.42,37.77],
+      '莫斯科':[37.62,55.75],'迪拜':[55.27,25.20],'孟买':[72.88,19.08],'柏林':[13.41,52.52]
+    };
+    var nodes=Object.keys(geoCoordMap).map(function(name,i){
+      return{name:name,value:i};
+    });
+    var series=[{
+      type:'scatter3D',coordinateSystem:'globe',symbolSize:6,itemStyle:{color:'#58a6ff'},
+      data:nodes.map(function(n){return[n.value,30,10];})
+    }];
+    // 飞线
+    var linesData=[];
+    for(var i=0;i<nodes.length;i++){
+      for(var j=i+1;j<Math.min(i+3,nodes.length);j++){
+        linesData.push({fromName:nodes[i].name,toName:nodes[j].name,coords:[
+          geoCoordMap[nodes[i].name],geoCoordMap[nodes[j].name]
+        ]});
+      }
+    }
+    linesData.forEach(function(line){
+      series.push({
+        type:'lines3D',coordinateSystem:'globe',
+        effect:{show:true,period:4,trailLength:.2,trailWidth:1,trailColor:'#58a6ff'},
+        lineStyle:{color:'#58a6ff',width:1,opacity:.3},
+        data:[line]
+      });
+    });
+
+    var option={
+      backgroundColor:'transparent',
+      globe:{baseTexture:'https://cdn.jsdelivr.net/npm/echarts-gl@2.0.9/asset/earth.jpg',
+        shading:'lambert',light:{ambientIntensity:.6,mainIntensity:.8},
+        viewControl:{autoRotate:true,autoRotateSpeed:2,distance:180},
+        atmosphere:{show:true,color:'#58a6ff'}
+      },
+      series:series
+    };
+    chart.setOption(option);
+    window.addEventListener('resize',function(){chart.resize();});
+    window._globeChart=chart;
+  }
+
+  // ═══ 消息趋势图 ═══
+  async function loadTrend(){
+    try{
+      var r=await(await fetch('/api/sentiment/chat-stats')).json();
+      if(r.code!==0)return;
+      var d=r.data;
+      var chart=echarts.init(document.getElementById('trend-chart'));
+      var hours=[],counts=[];
+      var hourMap={};
+      (d.hourly_trend||[]).forEach(function(h){hourMap[parseInt(h.hour)]=h.count;});
+      for(var i=0;i<24;i++){
+        var hh=i<10?'0'+i:''+i;
+        hours.push(hh+':00');
+        counts.push(hourMap[i]||0);
+      }
+      chart.setOption({
+        tooltip:{trigger:'axis'},
+        grid:{left:40,right:20,top:10,bottom:30},
+        xAxis:{type:'category',data:hours,axisLabel:{color:'#8b949e',fontSize:9,interval:3}},
+        yAxis:{type:'value',axisLabel:{color:'#8b949e',fontSize:10},splitLine:{lineStyle:{color:'rgba(255,255,255,.05)'}}},
+        series:[{data:counts,type:'line',smooth:true,areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,
+          colorStops:[{offset:0,color:'rgba(88,166,255,.3)'},{offset:1,color:'rgba(88,166,255,.02)'}]}},
+          itemStyle:{color:'#58a6ff'},lineStyle:{width:2}}]
+      });
+      window.addEventListener('resize',function(){chart.resize();});
+    }catch(e){console.error(e)}
+  }
+
+  // ═══ 情感趋势 ═══
+  async function loadSentimentTrend(){
+    try{
+      var r=await(await fetch('/api/sentiment/trend?hours=168')).json();
+      if(r.code!==0)return;
+      var d=r.data;
+      var chart=echarts.init(document.getElementById('sentiment-chart'));
+      var dates=[],pos=[],neg=[],neu=[];
+      d.forEach(function(item){
+        dates.push(item.date);pos.push(item.positive||0);neg.push(item.negative||0);neu.push(item.neutral||0);
+      });
+      if(dates.length===0){dates=['暂无数据'];pos=[0];neg=[0];neu=[0];}
+      chart.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{data:['正面','负面','中性'],textStyle:{color:'#8b949e',fontSize:10},bottom:0},
+        grid:{left:40,right:20,top:10,bottom:40},
+        xAxis:{type:'category',data:dates,axisLabel:{color:'#8b949e',fontSize:9,rotate:30}},
+        yAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(255,255,255,.05)'}},axisLabel:{color:'#8b949e',fontSize:10}},
+        series:[
+          {name:'正面',data:pos,type:'bar',stack:'total',itemStyle:{color:'#3fb950'},barWidth:'60%'},
+          {name:'负面',data:neg,type:'bar',stack:'total',itemStyle:{color:'#f85149'}},
+          {name:'中性',data:neu,type:'bar',stack:'total',itemStyle:{color:'#8b949e'}}
+        ]
+      });
+      window.addEventListener('resize',function(){chart.resize();});
+    }catch(e){console.error(e)}
+  }
+
+  // ═══ 话题分布 ═══
+  async function loadTopic(){
+    try{
+      var r=await(await fetch('/api/sentiment/topic?hours=168')).json();
+      if(r.code!==0)return;
+      var d=r.data;
+      var chart=echarts.init(document.getElementById('topic-chart'));
+      var data=[];
+      Object.keys(d).forEach(function(k){data.push({name:k,value:d[k]});});
+      if(data.length===0){data=[{name:'暂无数据',value:1}];}
+      chart.setOption({
+        tooltip:{trigger:'item'},
+        series:[{type:'pie',radius:['40%','70%'],center:['50%','55%'],roseType:'area',
+          label:{color:'#c9d1d9',fontSize:10},
+          data:data,
+          itemStyle:{borderColor:'rgba(10,14,39,.8)',borderWidth:2}}
+        ]
+      });
+      window.addEventListener('resize',function(){chart.resize();});
+    }catch(e){console.error(e)}
+  }
+
+  // ═══ 风险等级 ═══
+  async function loadRiskGauge(){
+    try{
+      var r=await(await fetch('/api/sentiment/alerts')).json();
+      if(r.code!==0)return;
+      var alerts=r.data||[];
+      var high=0,medium=0,low=0;
+      alerts.forEach(function(a){if(a.level==='high')high++;else if(a.level==='medium')medium++;else low++;});
+      var chart=echarts.init(document.getElementById('risk-chart'));
+      chart.setOption({
+        tooltip:{trigger:'item'},
+        series:[{
+          type:'pie',radius:['50%','75%'],center:['50%','55%'],
+          label:{show:true,formatter:'{b}: {c}',color:'#c9d1d9',fontSize:10},
+          data:[
+            {name:'🔴 高危',value:high,itemStyle:{color:'#f85149'}},
+            {name:'🟡 中危',value:medium,itemStyle:{color:'#d29922'}},
+            {name:'🟢 低危',value:low,itemStyle:{color:'#3fb950'}}
+          ],
+          emphasis:{scale:true,scaleSize:10}
+        }]
+      });
+      window.addEventListener('resize',function(){chart.resize();});
+    }catch(e){console.error(e)}
+  }
+
+  // ═══ 词云 ═══
+  async function loadWordCloud(){
+    try{
+      var r=await(await fetch('/api/sentiment/word-freq?top=80')).json();
+      if(r.code!==0)return;
+      var data=r.data||[];
+      if(data.length===0){data=[{name:'aiAgentOS',value:100}];}
+      var chart=echarts.init(document.getElementById('wordcloud-chart'));
+      var maxV=data[0]?data[0].value:100;
+      var minV=data.length?data[data.length-1].value:10;
+      var colors=['#58a6ff','#3fb950','#d29922','#bc8cff','#f85149','#79c0ff','#f0883e','#56d364'];
+      chart.setOption({
+        tooltip:{show:true},
+        series:[{
+          type:'wordCloud',
+          shape:'circle',
+          left:'center',top:'center',width:'90%',height:'90%',
+          sizeRange:[14,50],
+          rotationRange:[-30,30],
+          rotationStep:15,
+          gridSize:8,
+          drawOutOfBound:false,
+          textStyle:{fontFamily:'sans-serif',fontWeight:'normal',
+            color:function(){return colors[Math.floor(Math.random()*colors.length)];}},
+          emphasis:{textStyle:{fontWeight:'bold'}},
+          data:data
+        }]
+      });
+      window.addEventListener('resize',function(){chart.resize();});
+    }catch(e){console.error(e)}
+  }
+
+  // ═══ 初始化 ═══
+  function init(){
+    loadStats();
+    initGlobe();
+    loadTrend();
+    loadSentimentTrend();
+    loadTopic();
+    loadRiskGauge();
+    loadWordCloud();
+    // 自动刷新
+    setInterval(function(){
+      loadStats();
+      loadTrend();
+      loadSentimentTrend();
+      loadTopic();
+      loadRiskGauge();
+      loadWordCloud();
+    },30000);
+  }
+
+  init();
+  console.log('✅ 数智大屏已就绪');
+})();
+</script>
+</body>
+</html>
